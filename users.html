@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Créer un utilisateur et montant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+        }
+        form {
+            background: white;
+            width: 350px;
+            margin: 60px auto;
+            padding: 20px;
+            border-radius: 6px;
+        }
+        input, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        p {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<form id="userForm">
+    <h3>Créer un utilisateur et montant</h3>
+
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Mot de passe" required />
+    <input type="number" id="amount" placeholder="Montant" required />
+
+    <button type="submit">Enregistrer</button>
+    <p id="message"></p>
+</form>
+
+<script>
+// Génère un code : 1 lettre + 3 chiffres
+function generateCode() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const letter = letters[Math.floor(Math.random() * letters.length)];
+    const number = Math.floor(100 + Math.random() * 900); // 3 chiffres
+    return letter + number;
+}
+
+document.getElementById('userForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const amount = parseFloat(document.getElementById('amount').value);
+    const code = generateCode();
+
+    try {
+        const res = await fetch('http://localhost:3000/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, code, amount })
+        });
+
+        const data = await res.json();
+        document.getElementById('message').innerText = data.message;
+
+        if (res.ok) document.getElementById('userForm').reset();
+    } catch (err) {
+        console.error(err);
+        document.getElementById('message').innerText = 'Erreur serveur';
+    }
+});
+</script>
+
+</body>
+</html>

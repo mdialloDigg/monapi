@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Utilisateurs</title>
+<style>
+body { font-family: Arial; background: #f4f4f4; }
+h2, h3 { text-align: center; }
+form { background: white; width: 350px; margin: 20px auto; padding: 20px; border-radius: 6px; }
+input, button { width: 100%; margin-top: 10px; padding: 8px; }
+button { background: #007bff; color: white; border: none; cursor: pointer; }
+p { text-align: center; }
+table { border-collapse: collapse; width: 90%; margin: 20px auto 60px auto; background: white; }
+th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+th { background: #007bff; color: white; }
+</style>
+</head>
+<body>
+
+<h3>Créer un utilisateur</h3>
+<form id="userForm">
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Mot de passe" required />
+    <input type="number" id="amount" placeholder="Montant" required />
+    <button type="submit">Enregistrer</button>
+    <p id="message"></p>
+</form>
+
+<h2>Liste des utilisateurs</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Code</th>
+            <th>Montant</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody id="usersTable"></tbody>
+</table>
+
+<script>
+// Générer un code : 1 lettre + 3 chiffres
+function generateCode() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const letter = letters[Math.floor(Math.random() * letters.length)];
+    const number = Math.floor(100 + Math.random() * 900);
+    return letter + number;
+}
+
+// GET /users/all
+async function loadUsers() {
+    try {
+        const res = await fetch('/users/all');
+        if (!res.ok) throw new Error('Erreur serveur');
+        const users = await res.json();
+        const table = document.getElementById('usersTable');
+        table.innerHTML = '';
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.email}</td>
+                <td>${user.code}</td>
+                <td>${user.amount}</td>
+                <td>${new Date(user.createdAt).toLocaleString()}</td>
+            `;
+            table.appendChild(row);
+        });
+    } catch (err) {
+        console.error(err);
+        document.getElementById('usersTable').innerHTML = `<tr><td colspan="4" style="text-align:center;color:red;">Erreur lors du chargement</td></tr>`;
+    }
+}
+
+// POST /users
+document.getElementById('userForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const amount = parseFloat(document.getElementById('amount').value);
+    const code = generateCode();
+
+    try {
+        const res = await fetch('/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, code, amount })
+        });
+        const data = await res.json();
+        document.getElementById('message').innerText = data.message;
+
+        if (res.ok) {
+            document.getElementById('userForm').reset();
+            loadUsers(); // recharge le tableau
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('message').innerText = 'Erreur serveur';
+    }
+});
+
+// Charger les utilisateurs au chargement de la page
+loadUsers();
+</script>
+
+</body>
+</html>

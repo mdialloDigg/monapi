@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Liste des utilisateurs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+        }
+        table {
+            border-collapse: collapse;
+            width: 80%;
+            margin: 40px auto;
+            background: white;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background: #007bff;
+            color: white;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Liste des utilisateurs</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Date de création</th>
+        </tr>
+    </thead>
+    <tbody id="usersTable">
+        <!-- Users ici -->
+    </tbody>
+</table>
+
+<script>
+async function loadUsers() {
+    try {
+        const res = await fetch('http://localhost:3000/users/all');
+        const users = await res.json();
+
+        const table = document.getElementById('usersTable');
+        table.innerHTML = '';
+
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.email}</td>
+                <td>${new Date(user.createdAt).toLocaleString()}</td>
+            `;
+            table.appendChild(row);
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+loadUsers();
+</script>
+
+</body>
+</html>
+
+

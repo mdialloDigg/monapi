@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Liste des utilisateurs</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+}
+h2 {
+    text-align: center;
+    margin-top: 30px;
+}
+table {
+    border-collapse: collapse;
+    width: 80%;
+    margin: 40px auto;
+    background: white;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: left;
+}
+th {
+    background: #007bff;
+    color: white;
+}
+</style>
+</head>
+<body>
+
+<h2>Liste des utilisateurs</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Code</th>
+            <th>Montant</th>
+            <th>Date de création</th>
+        </tr>
+    </thead>
+    <tbody id="usersTable">
+        <!-- Les utilisateurs seront insérés ici -->
+    </tbody>
+</table>
+
+<script>
+async function loadUsers() {
+    try {
+        const res = await fetch('http://localhost:3000/users/all');
+        const users = await res.json();
+
+        const table = document.getElementById('usersTable');
+        table.innerHTML = '';
+
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.email}</td>
+                <td>${user.code}</td>
+                <td>${user.amount}</td>
+                <td>${new Date(user.createdAt).toLocaleString()}</td>
+            `;
+            table.appendChild(row);
+        });
+    } catch (err) {
+        console.error(err);
+        const table = document.getElementById('usersTable');
+        table.innerHTML = `<tr><td colspan="4" style="text-align:center;color:red;">Erreur lors du chargement des utilisateurs</td></tr>`;
+    }
+}
+
+// Charger les utilisateurs au chargement de la page
+loadUsers();
+</script>
+
+</body>
+</html>

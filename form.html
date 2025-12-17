@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Transaction</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f4f4;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            width: 300px;
+            margin: 50px auto;
+            border-radius: 5px;
+        }
+        input, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<form id="transactionForm">
+    <h3>Nouvelle transaction</h3>
+
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="number" id="montant" placeholder="Montant" required />
+
+    <button type="submit">Envoyer</button>
+    <p id="message"></p>
+</form>
+
+<script>
+document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value;
+    const montant = document.getElementById('montant').value;
+
+    const token = localStorage.getItem('token'); // JWT stocké après login
+
+    const res = await fetch('http://localhost:3000/transfer', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ email, montant })
+    });
+
+    const data = await res.json();
+    document.getElementById('message').innerText = data.message || 'Transaction envoyée';
+});
+</script>
+
+</body>
+</html>

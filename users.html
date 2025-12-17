@@ -62,7 +62,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
     const code = generateCode();
 
     try {
-        const res = await fetch('http://localhost:3000/users', {
+        const res = await fetch('https://monapi-bf4o.onrender.com/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, code, amount })

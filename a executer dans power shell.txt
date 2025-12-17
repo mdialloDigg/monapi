@@ -12,6 +12,9 @@ amSYetCmMskMw9Cm
 
 mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/?appName=Cluster0
 
+mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test
+
+
 ---------------------------------------
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
@@ -43,3 +46,13 @@ run().catch(console.dir);
 
 -----
 mongodb+srv://user:password@cluster0.xxxxx.mongodb.net/monapi
+
+-----
+
+https://dashboard.render.com/web/srv-d51jgblactks73a1kds0
+
+
+
+--------
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2VjMjNlNWZjNzMzY2YyMDFkNjcyMCIsImlhdCI6MTc2NTkxODMxN30.DSkyHx5QdsLY0JmNOAP9mTuEaDYuC5P9_7P5bmhxiOc
+

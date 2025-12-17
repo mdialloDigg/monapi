@@ -50,7 +50,7 @@ th {
 <script>
 async function loadUsers() {
     try {
-        const res = await fetch('http://localhost:3000/users/all');
+        const res = await fetch('https://monapi-bf4o.onrender.com/users/all');
         const users = await res.json();
 
         const table = document.getElementById('usersTable');

@@ -55,5 +55,10 @@ app.get('/users/all', async (req, res) => {
   }
 });
 
+app.get('/', (req, res) => {
+    res.send('https://monapi-bf4o.onrender.com');
+});
+
+
 // Démarrer serveur
-app.listen(3000, () => console.log('Serveur sur http://localhost:3000'));
+app.listen(3000, () => console.log('Serveur sur https://monapi-bf4o.onrender.com'));

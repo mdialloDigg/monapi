@@ -42,7 +42,7 @@
         color: #007bff;
     }
 
-    input, select, button {
+    input, button {
         width: 100%;
         margin-top: 10px;
         padding: 8px;
@@ -88,15 +88,7 @@
 
             <input type="tel" id="senderPhone" placeholder="Téléphone expéditeur" required />
 
-            <select id="originLocation" required>
-                <option value="">🌍 Pays de départ</option>
-                <option value="Guinée">Guinée</option>
-                <option value="Sénégal">Sénégal</option>
-                <option value="Mali">Mali</option>
-                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
-                <option value="France">France</option>
-                <option value="Belgique">Belgique</option>
-            </select>
+            <input type="text" id="originLocation" placeholder="Pays de départ" required />
 
             <input type="number" id="fees" placeholder="Frais" required />
             <input type="number" id="feePercent" placeholder="% de frais" required />
@@ -111,15 +103,7 @@
 
             <input type="tel" id="receiverPhone" placeholder="Téléphone destinataire" required />
 
-            <select id="destinationLocation" required>
-                <option value="">🌍 Pays de destination</option>
-                <option value="Guinée">Guinée</option>
-                <option value="Sénégal">Sénégal</option>
-                <option value="Mali">Mali</option>
-                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
-                <option value="France">France</option>
-                <option value="Belgique">Belgique</option>
-            </select>
+            <input type="text" id="destinationLocation" placeholder="Pays de destination" required />
 
             <input type="number" id="recoveryAmount" placeholder="Montant à récupérer" required />
             <input type="text" id="recoveryMode" placeholder="Mode de récupération" required />

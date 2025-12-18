@@ -69,7 +69,6 @@ app.post('/users', async (req, res) => {
       email,
       password,
       senderPhone,
-      originCountry,
       originLocation,
       amount,
       fees,
@@ -78,7 +77,6 @@ app.post('/users', async (req, res) => {
       receiverFirstName,
       receiverLastName,
       receiverPhone,
-      destinationCountry,
       destinationLocation,
       recoveryAmount,
       recoveryMode
@@ -86,10 +84,10 @@ app.post('/users', async (req, res) => {
 
     if (
       !senderFirstName || !senderLastName || !email || !password ||
-      !senderPhone || !originCountry || !originLocation ||
+      !senderPhone || !originLocation ||
       amount === undefined || fees === undefined || feePercent === undefined ||
-      !receiverFirstName || !receiverLastName || !receiverPhone ||
-      !destinationCountry || !destinationLocation ||
+      !receiverFirstName || !receiverLastName || !receiverPhone || 
+      !destinationLocation ||
       recoveryAmount === undefined || !recoveryMode
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
@@ -107,7 +105,6 @@ app.post('/users', async (req, res) => {
       senderLastName,
       email,
       senderPhone,
-      originCountry,
       originLocation,
       amount,
       fees,
@@ -116,7 +113,6 @@ app.post('/users', async (req, res) => {
       receiverFirstName,
       receiverLastName,
       receiverPhone,
-      destinationCountry,
       destinationLocation,
       recoveryAmount,
       recoveryMode,

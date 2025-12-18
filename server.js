@@ -9,74 +9,93 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// 🔹 Afficher le formulaire HTML
+/* =========================
+   📄 AFFICHER LE FORMULAIRE
+========================= */
 app.get('/users', (req, res) => {
   res.sendFile(path.join(__dirname, 'users.html'));
 });
 
-// 🔹 Connexion MongoDB
-mongoose.connect('mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test')
-  .then(() => console.log('MongoDB connecté'))
-  .catch(err => console.error(err));
+/* =========================
+   🔗 CONNEXION MONGODB
+========================= */
+mongoose.connect(
+  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
+)
+.then(() => console.log('✅ MongoDB connecté'))
+.catch(err => console.error('❌ MongoDB erreur:', err));
 
-// 🔹 Modèle User
+/* =========================
+   📦 MODÈLE USER
+========================= */
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-
-  code: { type: String, required: true, unique: true },
-  amount: { type: Number, required: true },
-
+  // Expéditeur
+  senderFirstName: { type: String, required: true },
+  senderLastName: { type: String, required: true },
+  email: { type: String, required: true },
   senderPhone: { type: String, required: true },
-  receiverPhone: { type: String, required: true },
-
+  originCountry: { type: String, required: true },
   originLocation: { type: String, required: true },
-  destinationLocation: { type: String, required: true },
-
+  amount: { type: Number, required: true },
   fees: { type: Number, required: true },
   feePercent: { type: Number, required: true },
 
+  // Destinataire
+  receiverFirstName: { type: String, required: true },
+  receiverLastName: { type: String, required: true },
+  receiverPhone: { type: String, required: true },
+  destinationCountry: { type: String, required: true },
+  destinationLocation: { type: String, required: true },
   recoveryAmount: { type: Number, required: true },
   recoveryMode: { type: String, required: true },
+
+  // Sécurité
+  password: { type: String, required: true },
+  code: { type: String, required: true, unique: true },
 
   createdAt: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);
 
-// 🔹 POST /users → créer un utilisateur
+/* =========================
+   ➕ POST /users
+========================= */
 app.post('/users', async (req, res) => {
   try {
     const {
+      senderFirstName,
+      senderLastName,
       email,
       password,
-      amount,
       senderPhone,
-      receiverPhone,
+      originCountry,
       originLocation,
-      destinationLocation,
+      amount,
       fees,
       feePercent,
+
+      receiverFirstName,
+      receiverLastName,
+      receiverPhone,
+      destinationCountry,
+      destinationLocation,
       recoveryAmount,
       recoveryMode
     } = req.body;
 
     if (
-      !email || !password || amount === undefined ||
-      !senderPhone || !receiverPhone ||
-      !originLocation || !destinationLocation ||
-      fees === undefined || feePercent === undefined ||
+      !senderFirstName || !senderLastName || !email || !password ||
+      !senderPhone || !originCountry || !originLocation ||
+      amount === undefined || fees === undefined || feePercent === undefined ||
+      !receiverFirstName || !receiverLastName || !receiverPhone ||
+      !destinationCountry || !destinationLocation ||
       recoveryAmount === undefined || !recoveryMode
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Utilisateur déjà existant' });
-    }
-
-    // Générer code 1 lettre + 3 chiffres
+    // Code aléatoire
     const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
     const number = Math.floor(100 + Math.random() * 900);
     const code = letter + number;
@@ -84,23 +103,31 @@ app.post('/users', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
+      senderFirstName,
+      senderLastName,
       email,
-      password: hashedPassword,
-      code,
-      amount,
       senderPhone,
-      receiverPhone,
+      originCountry,
       originLocation,
-      destinationLocation,
+      amount,
       fees,
       feePercent,
+
+      receiverFirstName,
+      receiverLastName,
+      receiverPhone,
+      destinationCountry,
+      destinationLocation,
       recoveryAmount,
-      recoveryMode
+      recoveryMode,
+
+      password: hashedPassword,
+      code
     });
 
     await user.save();
 
-    res.json({ message: 'Utilisateur créé avec succès' });
+    res.json({ message: '✅ Transfert enregistré avec succès' });
 
   } catch (err) {
     console.error(err);
@@ -108,75 +135,80 @@ app.post('/users', async (req, res) => {
   }
 });
 
-// 🔹 GET /users/all → tableau HTML
+/* =========================
+   📄 GET JSON
+========================= */
+app.get('/users/json', async (req, res) => {
+  const users = await User.find({}, { password: 0 });
+  res.json(users);
+});
+
+/* =========================
+   📊 GET HTML
+========================= */
 app.get('/users/all', async (req, res) => {
-  try {
-    const users = await User.find({}, { password: 0 });
+  const users = await User.find({}, { password: 0 });
 
-    let html = `
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-      <meta charset="UTF-8">
-      <title>Liste des utilisateurs</title>
-      <style>
-        body { font-family: Arial; background: #f4f6f8; }
-        table { border-collapse: collapse; width: 95%; margin: 30px auto; background: white; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-        th { background: #007bff; color: white; }
-      </style>
-    </head>
-    <body>
-    <h2 style="text-align:center;">Liste des utilisateurs</h2>
-    <table>
-      <tr>
-        <th>Email</th>
-        <th>Code</th>
-        <th>Montant</th>
-        <th>Expéditeur</th>
-        <th>Destinataire</th>
-        <th>Origine</th>
-        <th>Destination</th>
-        <th>Frais</th>
-        <th>%</th>
-        <th>Récupération</th>
-        <th>Mode</th>
-        <th>Date</th>
-      </tr>`;
+  let html = `
+  <!DOCTYPE html>
+  <html lang="fr">
+  <head>
+  <meta charset="UTF-8">
+  <title>Liste des transferts</title>
+  <style>
+    body { font-family: Arial; background:#f4f4f4; }
+    table { width:98%; margin:30px auto; border-collapse:collapse; background:#fff; }
+    th, td { border:1px solid #ccc; padding:8px; font-size:13px; text-align:center; }
+    th { background:#007bff; color:#fff; }
+    .exp { background:#e9f1ff; }
+    .dest { background:#eaffea; }
+  </style>
+  </head>
+  <body>
+  <h2 style="text-align:center;">📋 Liste des transferts</h2>
 
-    users.forEach(u => {
-      html += `
-      <tr>
-        <td>${u.email}</td>
-        <td>${u.code}</td>
-        <td>${u.amount}</td>
-        <td>${u.senderPhone}</td>
-        <td>${u.receiverPhone}</td>
-        <td>${u.originLocation}</td>
-        <td>${u.destinationLocation}</td>
-        <td>${u.fees}</td>
-        <td>${u.feePercent}</td>
-        <td>${u.recoveryAmount}</td>
-        <td>${u.recoveryMode}</td>
-        <td>${new Date(u.createdAt).toLocaleString()}</td>
-      </tr>`;
-    });
+  <table>
+  <tr>
+    <th colspan="7" class="exp">EXPÉDITEUR</th>
+    <th colspan="6" class="dest">DESTINATAIRE</th>
+    <th>Date</th>
+  </tr>
+  <tr>
+    <th>Prénom</th><th>Nom</th><th>Email</th><th>Tél</th><th>Pays</th><th>Montant</th><th>Frais</th>
+    <th>Prénom</th><th>Nom</th><th>Tél</th><th>Pays</th><th>Reçu</th><th>Mode</th>
+    <th></th>
+  </tr>`;
 
-    html += `</table></body></html>`;
-    res.send(html);
+  users.forEach(u => {
+    html += `
+    <tr>
+      <td>${u.senderFirstName}</td>
+      <td>${u.senderLastName}</td>
+      <td>${u.email}</td>
+      <td>${u.senderPhone}</td>
+      <td>${u.originCountry}</td>
+      <td>${u.amount}</td>
+      <td>${u.fees}</td>
 
-  } catch (err) {
-    res.status(500).send('Erreur serveur');
-  }
+      <td>${u.receiverFirstName}</td>
+      <td>${u.receiverLastName}</td>
+      <td>${u.receiverPhone}</td>
+      <td>${u.destinationCountry}</td>
+      <td>${u.recoveryAmount}</td>
+      <td>${u.recoveryMode}</td>
+
+      <td>${new Date(u.createdAt).toLocaleString()}</td>
+    </tr>`;
+  });
+
+  html += `</table></body></html>`;
+  res.send(html);
 });
 
-// 🔹 Page racine
-app.get('/', (req, res) => {
-  res.send('API en ligne');
-});
-
-// 🔹 Lancer serveur
+/* =========================
+   🚀 SERVEUR
+========================= */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('Serveur démarré');
+  console.log('🚀 Serveur en ligne');
 });

@@ -4,17 +4,33 @@
     <meta charset="UTF-8">
     <title>Créer un utilisateur et montant</title>
     <style>
-        body { font-family: Arial; background: #f2f2f2; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+        }
         form {
             background: white;
             width: 400px;
-            margin: 60px auto;
+            margin: 40px auto;
             padding: 20px;
             border-radius: 6px;
         }
-        input, button { width: 100%; margin-top: 10px; padding: 8px; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; }
-        p { text-align: center; }
+        input, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        p {
+            text-align: center;
+            margin-top: 10px;
+            color: green;
+        }
     </style>
 </head>
 <body>
@@ -43,11 +59,11 @@
 </form>
 
 <script>
-// Génère un code automatique : 1 lettre + 3 chiffres
+// Génère un code aléatoire : 1 lettre + 3 chiffres
 function generateCode() {
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const letter = letters[Math.floor(Math.random() * letters.length)];
-    const number = Math.floor(100 + Math.random() * 900);
+    const number = Math.floor(100 + Math.random() * 900); // 3 chiffres
     return letter + number;
 }
 
@@ -58,6 +74,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const amount = parseFloat(document.getElementById('amount').value);
+
     const senderPhone = document.getElementById('senderPhone').value;
     const receiverPhone = document.getElementById('receiverPhone').value;
     const originLocation = document.getElementById('originLocation').value;
@@ -66,6 +83,7 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
     const feePercent = parseFloat(document.getElementById('feePercent').value);
     const recoveryAmount = parseFloat(document.getElementById('recoveryAmount').value);
     const recoveryMode = document.getElementById('recoveryMode').value;
+
     const code = generateCode();
 
     try {
@@ -84,7 +102,9 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         const data = await res.json();
         document.getElementById('message').innerText = data.message;
 
-        if (res.ok) document.getElementById('userForm').reset();
+        if (res.ok) {
+            document.getElementById('userForm').reset();
+        }
     } catch (err) {
         console.error(err);
         document.getElementById('message').innerText = 'Erreur serveur';

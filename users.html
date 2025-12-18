@@ -1,68 +1,70 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Transfert – Expéditeur / Destinataire</title>
+<meta charset="UTF-8">
+<title>Transfert – Expéditeur / Destinataire</title>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f2f2f2;
-        }
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f2f2f2;
+    }
 
-        form {
-            background: white;
-            width: 950px;
-            margin: 40px auto;
-            padding: 20px;
-            border-radius: 8px;
-        }
+    form {
+        background: white;
+        width: 950px;
+        margin: 40px auto;
+        padding: 20px;
+        border-radius: 8px;
+    }
 
-        h3 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+    h3 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
 
-        .container {
-            display: flex;
-            gap: 20px;
-        }
+    .container {
+        display: flex;
+        gap: 20px;
+    }
 
-        .box {
-            flex: 1;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 6px;
-            background: #fafafa;
-        }
+    .box {
+        flex: 1;
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 6px;
+        background: #fafafa;
+    }
 
-        .box h4 {
-            text-align: center;
-            margin-bottom: 15px;
-            color: #007bff;
-        }
+    .box h4 {
+        text-align: center;
+        margin-bottom: 15px;
+        color: #007bff;
+    }
 
-        input, select, button {
-            width: 100%;
-            margin-top: 10px;
-            padding: 8px;
-        }
+    input, select, button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 8px;
+        box-sizing: border-box;
+    }
 
-        button {
-            margin-top: 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-        }
+    button {
+        margin-top: 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+    }
 
-        #message {
-            text-align: center;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-    </style>
+    #message {
+        text-align: center;
+        margin-top: 15px;
+        font-weight: bold;
+        color: green;
+    }
+</style>
 </head>
 
 <body>
@@ -84,7 +86,7 @@
 
             <input type="number" id="amount" placeholder="Montant envoyé" required />
 
-            <input type="text" id="senderPhone" placeholder="Téléphone expéditeur" required />
+            <input type="tel" id="senderPhone" placeholder="Téléphone expéditeur" required />
 
             <select id="originLocation" required>
                 <option value="">🌍 Pays de départ</option>
@@ -107,7 +109,7 @@
             <input type="text" id="receiverFirstName" placeholder="Prénom destinataire" required />
             <input type="text" id="receiverLastName" placeholder="Nom destinataire" required />
 
-            <input type="text" id="receiverPhone" placeholder="Téléphone destinataire" required />
+            <input type="tel" id="receiverPhone" placeholder="Téléphone destinataire" required />
 
             <select id="destinationLocation" required>
                 <option value="">🌍 Pays de destination</option>

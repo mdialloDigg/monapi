@@ -1,6 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User'); // ⚠️ respecte bien la casse du fichier
+const User = require('../models/User'); // ⚠️ casse correcte
 
 const router = express.Router();
 
@@ -10,89 +10,66 @@ const router = express.Router();
 router.post('/', async (req, res) => {
   try {
     const {
-      // 🔐 Auth
       email,
       password,
-
-      // 📤 Expéditeur
       senderFirstName,
       senderLastName,
       senderPhone,
-      originLocation, // 🔹 uniquement le lieu
-
-      // 💰 Transaction
+      originLocation,
       amount,
       fees,
       feePercent,
-
-      // 📥 Destinataire
       receiverFirstName,
       receiverLastName,
       receiverPhone,
-      destinationLocation, // 🔹 uniquement le lieu
-
-      // 💵 Récupération
+      destinationLocation,
       recoveryAmount,
       recoveryMode
     } = req.body;
 
-    /* =========================
-       ✅ Validation
-    ========================= */
+    // ✅ Validation améliorée : vérifie aussi les chaînes vides
     if (
-      !email || !password ||
-      !senderFirstName || !senderLastName || !senderPhone ||
-      !originLocation ||
+      !email?.trim() || !password?.trim() ||
+      !senderFirstName?.trim() || !senderLastName?.trim() || !senderPhone?.trim() ||
+      !originLocation?.trim() ||
       amount === undefined || fees === undefined || feePercent === undefined ||
-      !receiverFirstName || !receiverLastName || !receiverPhone ||
-      !destinationLocation ||
-      recoveryAmount === undefined || !recoveryMode
+      !receiverFirstName?.trim() || !receiverLastName?.trim() || !receiverPhone?.trim() ||
+      !destinationLocation?.trim() ||
+      recoveryAmount === undefined || !recoveryMode?.trim()
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    /* =========================
-       🔎 Vérifier email existant
-    ========================= */
+    // 🔎 Vérifier si l'utilisateur existe déjà
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Utilisateur déjà existant' });
     }
 
-    /* =========================
-       🔐 Hash mot de passe
-    ========================= */
+    // 🔐 Hash mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    /* =========================
-       🔢 Générer code (A123)
-    ========================= */
+    // 🔢 Générer code (A123)
     const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
     const number = Math.floor(100 + Math.random() * 900);
     const code = letter + number;
 
-    /* =========================
-       📦 Création utilisateur
-    ========================= */
+    // 📦 Création utilisateur
     const user = new User({
       email,
       password: hashedPassword,
       code,
-
       senderFirstName,
       senderLastName,
       senderPhone,
       originLocation,
-
       amount,
       fees,
       feePercent,
-
       receiverFirstName,
       receiverLastName,
       receiverPhone,
       destinationLocation,
-
       recoveryAmount,
       recoveryMode
     });

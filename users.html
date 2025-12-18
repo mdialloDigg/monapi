@@ -1,66 +1,68 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Créer un utilisateur et transfert</title>
+    <meta charset="UTF-8">
+    <title>Transfert – Expéditeur / Destinataire</title>
 
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f2f2f2;
-}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+        }
 
-form {
-    background: white;
-    width: 800px;
-    margin: 40px auto;
-    padding: 20px;
-    border-radius: 6px;
-}
+        form {
+            background: white;
+            width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            border-radius: 8px;
+        }
 
-h3 {
-    text-align: center;
-    margin-bottom: 20px;
-}
+        h3 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-.container {
-    display: flex;
-    gap: 20px;
-}
+        .container {
+            display: flex;
+            gap: 20px;
+        }
 
-.box {
-    flex: 1;
-    border: 1px solid #ccc;
-    padding: 15px;
-    border-radius: 6px;
-    background: #fafafa;
-}
+        .box {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
 
-.box h4 {
-    text-align: center;
-    margin-bottom: 10px;
-}
+        .box h4 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #007bff;
+        }
 
-input, button {
-    width: 100%;
-    margin-top: 10px;
-    padding: 8px;
-}
+        input, select, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+        }
 
-button {
-    margin-top: 20px;
-    background: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
+        button {
+            margin-top: 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
 
-p {
-    text-align: center;
-    margin-top: 10px;
-    color: green;
-}
-</style>
+        #message {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body>
@@ -70,40 +72,58 @@ p {
 
     <div class="container">
 
-        <!-- 🔵 EXPÉDITEUR -->
+        <!-- ================= EXPÉDITEUR ================= -->
         <div class="box">
-            <h4>Expéditeur</h4>
+            <h4>👤 Expéditeur</h4>
 
-            <input type="email" id="email" placeholder="Email" required />
+            <input type="email" id="email" placeholder="Email expéditeur" required />
             <input type="password" id="password" placeholder="Mot de passe" required />
 
             <input type="number" id="amount" placeholder="Montant envoyé" required />
+
             <input type="text" id="senderPhone" placeholder="Téléphone expéditeur" required />
-            <input type="text" id="originLocation" placeholder="Lieu d'expédition" required />
+
+            <select id="originLocation" required>
+                <option value="">🌍 Pays de départ</option>
+                <option value="Guinée">Guinée</option>
+                <option value="Sénégal">Sénégal</option>
+                <option value="Mali">Mali</option>
+                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                <option value="France">France</option>
+                <option value="Belgique">Belgique</option>
+            </select>
 
             <input type="number" id="fees" placeholder="Frais" required />
             <input type="number" id="feePercent" placeholder="% de frais" required />
         </div>
 
-        <!-- 🟢 DESTINATAIRE -->
+        <!-- ================= DESTINATAIRE ================= -->
         <div class="box">
-            <h4>Destinataire</h4>
+            <h4>👥 Destinataire</h4>
 
             <input type="text" id="receiverPhone" placeholder="Téléphone destinataire" required />
-            <input type="text" id="destinationLocation" placeholder="Lieu de destination" required />
 
-            <input type="number" id="recoveryAmount" placeholder="Montant reçu" required />
-            <input type="text" id="recoveryMode" placeholder="Mode de récupération" required />
+            <select id="destinationLocation" required>
+                <option value="">🌍 Pays de destination</option>
+                <option value="Guinée">Guinée</option>
+                <option value="Sénégal">Sénégal</option>
+                <option value="Mali">Mali</option>
+                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                <option value="France">France</option>
+                <option value="Belgique">Belgique</option>
+            </select>
+
+            <input type="number" id="recoveryAmount" placeholder="Montant à récupérer" required />
+            <input type="text" id="recoveryMode" placeholder="Mode de récupération (cash, mobile...)" required />
         </div>
 
     </div>
 
-    <button type="submit">Enregistrer</button>
+    <button type="submit">💾 Enregistrer le transfert</button>
     <p id="message"></p>
 </form>
 
 <script>
-// Génère un code : 1 lettre + 3 chiffres
 function generateCode() {
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const letter = letters[Math.floor(Math.random() * letters.length)];
@@ -114,18 +134,23 @@ function generateCode() {
 document.getElementById('userForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const data = {
+    const payload = {
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
         amount: Number(document.getElementById('amount').value),
+
         senderPhone: document.getElementById('senderPhone').value,
         receiverPhone: document.getElementById('receiverPhone').value,
+
         originLocation: document.getElementById('originLocation').value,
         destinationLocation: document.getElementById('destinationLocation').value,
+
         fees: Number(document.getElementById('fees').value),
         feePercent: Number(document.getElementById('feePercent').value),
+
         recoveryAmount: Number(document.getElementById('recoveryAmount').value),
         recoveryMode: document.getElementById('recoveryMode').value,
+
         code: generateCode()
     };
 
@@ -133,18 +158,21 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
         const res = await fetch('https://monapi-bf4o.onrender.com/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
 
-        const result = await res.json();
-        document.getElementById('message').innerText = result.message;
+        const data = await res.json();
+        document.getElementById('message').innerText = data.message || 'Succès';
 
-        if (res.ok) document.getElementById('userForm').reset();
+        if (res.ok) {
+            document.getElementById('userForm').reset();
+        }
     } catch (err) {
+        console.error(err);
         document.getElementById('message').innerText = 'Erreur serveur';
     }
 });
 </script>
 
-</body> 
+</body>
 </html>

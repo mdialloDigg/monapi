@@ -23,9 +23,8 @@ const userSchema = new mongoose.Schema({
   // Expéditeur
   senderFirstName: { type: String, required: true },
   senderLastName: { type: String, required: true },
-  email: { type: String, required: true },
   senderPhone: { type: String, required: true },
-  originLocation: { type: String, required: true }, // garder uniquement le lieu
+  originLocation: { type: String, required: true },
   amount: { type: Number, required: true },
   fees: { type: Number, required: true },
   feePercent: { type: Number, required: true },
@@ -34,7 +33,7 @@ const userSchema = new mongoose.Schema({
   receiverFirstName: { type: String, required: true },
   receiverLastName: { type: String, required: true },
   receiverPhone: { type: String, required: true },
-  destinationLocation: { type: String, required: true }, // garder uniquement le lieu
+  destinationLocation: { type: String, required: true },
   recoveryAmount: { type: Number, required: true },
   recoveryMode: { type: String, required: true },
 
@@ -52,7 +51,6 @@ app.post('/users', async (req, res) => {
     const {
       senderFirstName,
       senderLastName,
-      email,
       password,
       senderPhone,
       originLocation,
@@ -68,7 +66,7 @@ app.post('/users', async (req, res) => {
     } = req.body;
 
     if (
-      !senderFirstName || !senderLastName || !email || !password ||
+      !senderFirstName || !senderLastName || !password ||
       !senderPhone || !originLocation ||
       amount === undefined || fees === undefined || feePercent === undefined ||
       !receiverFirstName || !receiverLastName || !receiverPhone ||
@@ -86,7 +84,6 @@ app.post('/users', async (req, res) => {
     const user = new User({
       senderFirstName,
       senderLastName,
-      email,
       senderPhone,
       originLocation,
       amount,
@@ -104,7 +101,7 @@ app.post('/users', async (req, res) => {
 
     await user.save();
 
-    res.json({ message: '✅ Transfert enregistré avec succès' });
+    res.json({ message: '✅ Transfert enregistré avec succès', code });
 
   } catch (err) {
     console.error(err);
@@ -140,13 +137,13 @@ app.get('/users/all', async (req, res) => {
 
   <table>
   <tr>
-    <th colspan="6" class="exp">EXPÉDITEUR</th>
+    <th colspan="7" class="exp">EXPÉDITEUR</th>
     <th colspan="6" class="dest">DESTINATAIRE</th>
     <th>Date</th>
   </tr>
   <tr>
-    <th>Prénom</th><th>Nom</th><th>Email</th><th>Tél</th><th>Montant</th><th>Frais</th>
-    <th>Prénom</th><th>Nom</th><th>Tél</th><th>Reçu</th><th>Mode</th><th></th>
+    <th>Prénom</th><th>Nom</th><th>Tél</th><th>Pays départ</th><th>Montant</th><th>Frais</th><th>Code</th>
+    <th>Prénom</th><th>Nom</th><th>Tél</th><th>Pays destination</th><th>Montant reçu</th><th>Mode</th>
     <th></th>
   </tr>`;
 
@@ -155,17 +152,18 @@ app.get('/users/all', async (req, res) => {
     <tr>
       <td>${u.senderFirstName}</td>
       <td>${u.senderLastName}</td>
-      <td>${u.email}</td>
       <td>${u.senderPhone}</td>
+      <td>${u.originLocation}</td>
       <td>${u.amount}</td>
       <td>${u.fees}</td>
+      <td>${u.code}</td>
 
       <td>${u.receiverFirstName}</td>
       <td>${u.receiverLastName}</td>
       <td>${u.receiverPhone}</td>
+      <td>${u.destinationLocation}</td>
       <td>${u.recoveryAmount}</td>
       <td>${u.recoveryMode}</td>
-      <td></td>
 
       <td>${new Date(u.createdAt).toLocaleString()}</td>
     </tr>`;

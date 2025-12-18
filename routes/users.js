@@ -1,85 +1,129 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const User = require('../models/user'); // Assure-toi que le chemin est correct
+const User = require('../models/User'); // ⚠️ respecte bien la casse du fichier
 
 const router = express.Router();
 
-// POST /users → créer un utilisateur avec tous les champs
+/* =====================================================
+   POST /users → créer une transaction utilisateur
+===================================================== */
 router.post('/', async (req, res) => {
   try {
     const {
+      // 🔐 Auth
       email,
       password,
-      amount,
+
+      // 📤 Expéditeur
+      senderFirstName,
+      senderLastName,
       senderPhone,
-      receiverPhone,
+      originCountry,
       originLocation,
-      destinationLocation,
+
+      // 💰 Transaction
+      amount,
       fees,
       feePercent,
+
+      // 📥 Destinataire
+      receiverFirstName,
+      receiverLastName,
+      receiverPhone,
+      destinationCountry,
+      destinationLocation,
+
+      // 💵 Récupération
       recoveryAmount,
       recoveryMode
     } = req.body;
 
-    // Vérification des champs obligatoires
+    /* =========================
+       ✅ Validation
+    ========================= */
     if (
-      !email || !password || amount === undefined ||
-      !senderPhone || !receiverPhone ||
-      !originLocation || !destinationLocation ||
-      fees === undefined || feePercent === undefined ||
+      !email || !password ||
+      !senderFirstName || !senderLastName || !senderPhone ||
+      !originCountry || !originLocation ||
+      amount === undefined || fees === undefined || feePercent === undefined ||
+      !receiverFirstName || !receiverLastName || !receiverPhone ||
+      !destinationCountry || !destinationLocation ||
       recoveryAmount === undefined || !recoveryMode
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    // Vérifier si l'utilisateur existe déjà
+    /* =========================
+       🔎 Vérifier email existant
+    ========================= */
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Utilisateur déjà existant' });
     }
 
-    // Génération du code automatique : 1 lettre + 3 chiffres
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const letter = letters[Math.floor(Math.random() * letters.length)];
+    /* =========================
+       🔐 Hash mot de passe
+    ========================= */
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    /* =========================
+       🔢 Générer code (A123)
+    ========================= */
+    const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
     const number = Math.floor(100 + Math.random() * 900);
     const code = letter + number;
 
-    // Hash du mot de passe
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Création de l'utilisateur
+    /* =========================
+       📦 Création utilisateur
+    ========================= */
     const user = new User({
       email,
       password: hashedPassword,
       code,
-      amount,
+
+      senderFirstName,
+      senderLastName,
       senderPhone,
-      receiverPhone,
+      originCountry,
       originLocation,
-      destinationLocation,
+
+      amount,
       fees,
       feePercent,
+
+      receiverFirstName,
+      receiverLastName,
+      receiverPhone,
+      destinationCountry,
+      destinationLocation,
+
       recoveryAmount,
       recoveryMode
     });
 
     await user.save();
 
-    res.json({ message: 'Utilisateur créé avec succès', user });
+    res.status(201).json({
+      message: 'Transaction créée avec succès',
+      code
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// GET /users/all → lister tous les utilisateurs (sans mot de passe)
+/* =====================================================
+   GET /users/all → liste JSON (sans mot de passe)
+===================================================== */
 router.get('/all', async (req, res) => {
   try {
     const users = await User.find({}, { password: 0 });
     res.json(users);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 

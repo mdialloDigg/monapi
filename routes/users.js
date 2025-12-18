@@ -18,8 +18,7 @@ router.post('/', async (req, res) => {
       senderFirstName,
       senderLastName,
       senderPhone,
-      originCountry,
-      originLocation,
+      originLocation, // 🔹 uniquement le lieu
 
       // 💰 Transaction
       amount,
@@ -30,8 +29,7 @@ router.post('/', async (req, res) => {
       receiverFirstName,
       receiverLastName,
       receiverPhone,
-      destinationCountry,
-      destinationLocation,
+      destinationLocation, // 🔹 uniquement le lieu
 
       // 💵 Récupération
       recoveryAmount,
@@ -44,10 +42,10 @@ router.post('/', async (req, res) => {
     if (
       !email || !password ||
       !senderFirstName || !senderLastName || !senderPhone ||
-      !originCountry || !originLocation ||
+      !originLocation ||
       amount === undefined || fees === undefined || feePercent === undefined ||
       !receiverFirstName || !receiverLastName || !receiverPhone ||
-      !destinationCountry || !destinationLocation ||
+      !destinationLocation ||
       recoveryAmount === undefined || !recoveryMode
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
@@ -84,7 +82,6 @@ router.post('/', async (req, res) => {
       senderFirstName,
       senderLastName,
       senderPhone,
-      originCountry,
       originLocation,
 
       amount,
@@ -94,7 +91,6 @@ router.post('/', async (req, res) => {
       receiverFirstName,
       receiverLastName,
       receiverPhone,
-      destinationCountry,
       destinationLocation,
 
       recoveryAmount,

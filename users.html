@@ -1,80 +1,83 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Créer un utilisateur et montant</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f2f2f2;
-        }
-        form {
-            background: white;
-            width: 350px;
-            margin: 60px auto;
-            padding: 20px;
-            border-radius: 6px;
-        }
-        input, button {
-            width: 100%;
-            margin-top: 10px;
-            padding: 8px;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        p {
-            text-align: center;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Créer un utilisateur</title>
+<style>
+body { font-family: Arial; background: #f2f2f2; }
+form { background: white; width: 380px; margin: 40px auto; padding: 20px; border-radius: 6px; }
+input, button { width: 100%; margin-top: 8px; padding: 8px; }
+button { background: #007bff; color: white; border: none; cursor: pointer; }
+p { text-align: center; }
+</style>
 </head>
 <body>
 
 <form id="userForm">
-    <h3>Créer un utilisateur et montant</h3>
+<h3>Créer un utilisateur</h3>
 
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Mot de passe" required />
-    <input type="number" id="amount" placeholder="Montant" required />
+<input type="email" id="email" placeholder="Email" required>
+<input type="password" id="password" placeholder="Mot de passe" required>
+<input type="number" id="amount" placeholder="Montant" required>
 
-    <button type="submit">Enregistrer</button>
-    <p id="message"></p>
+<input type="text" id="senderPhone" placeholder="Téléphone expéditeur" required>
+<input type="text" id="receiverPhone" placeholder="Téléphone destinataire" required>
+
+<input type="text" id="originLocation" placeholder="Lieu d'expédition" required>
+<input type="text" id="destinationLocation" placeholder="Lieu de destination" required>
+
+<input type="number" id="fees" placeholder="Frais" required>
+<input type="number" id="feePercent" placeholder="% de frais" required>
+
+<input type="number" id="recoveryAmount" placeholder="Montant de récupération" required>
+<input type="text" id="recoveryMode" placeholder="Mode de récupération" required>
+
+<button type="submit">Enregistrer</button>
+<p id="message"></p>
 </form>
 
 <script>
-// Génère un code : 1 lettre + 3 chiffres
-function generateCode() {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const letter = letters[Math.floor(Math.random() * letters.length)];
-    const number = Math.floor(100 + Math.random() * 900); // 3 chiffres
-    return letter + number;
-}
-
 document.getElementById('userForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const amount = parseFloat(document.getElementById('amount').value);
-    const code = generateCode();
+    const email = email.value;
+    const password = password.value;
+    const amount = Number(amount.value);
+
+    const senderPhone = senderPhone.value;
+    const receiverPhone = receiverPhone.value;
+    const originLocation = originLocation.value;
+    const destinationLocation = destinationLocation.value;
+    const fees = Number(fees.value);
+    const feePercent = Number(feePercent.value);
+    const recoveryAmount = Number(recoveryAmount.value);
+    const recoveryMode = recoveryMode.value;
 
     try {
-        const res = await fetch('https://monapi-bf4o.onrender.com/users', {
+        const res = await fetch('/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, code, amount })
+            body: JSON.stringify({
+                email,
+                password,
+                amount,
+                senderPhone,
+                receiverPhone,
+                originLocation,
+                destinationLocation,
+                fees,
+                feePercent,
+                recoveryAmount,
+                recoveryMode
+            })
         });
 
         const data = await res.json();
-        document.getElementById('message').innerText = data.message;
+        message.innerText = data.message;
 
-        if (res.ok) document.getElementById('userForm').reset();
-    } catch (err) {
-        console.error(err);
-        document.getElementById('message').innerText = 'Erreur serveur';
+        if (res.ok) userForm.reset();
+    } catch {
+        message.innerText = 'Erreur serveur';
     }
 });
 </script>

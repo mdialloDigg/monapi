@@ -3,77 +3,124 @@
 <head>
 <meta charset="UTF-8">
 <title>Liste des utilisateurs</title>
+
 <style>
 body {
     font-family: Arial, sans-serif;
     background: #f4f4f4;
 }
+
 h2 {
     text-align: center;
     margin-top: 30px;
 }
+
 table {
     border-collapse: collapse;
-    width: 80%;
+    width: 95%;
     margin: 40px auto;
     background: white;
 }
+
 th, td {
     border: 1px solid #ccc;
-    padding: 10px;
-    text-align: left;
+    padding: 8px;
+    font-size: 14px;
 }
+
 th {
     background: #007bff;
     color: white;
+    text-align: center;
+}
+
+td {
+    text-align: center;
 }
 </style>
 </head>
+
 <body>
 
 <h2>Liste des utilisateurs</h2>
 
 <table>
-    <thead>
-        <tr>
-            <th>Email</th>
-            <th>Code</th>
-            <th>Montant</th>
-            <th>Date de création</th>
-        </tr>
-    </thead>
-    <tbody id="usersTable">
-        <!-- Les utilisateurs seront insérés ici -->
-    </tbody>
+<thead>
+<tr>
+    <th>Email</th>
+    <th>Code</th>
+    <th>Montant</th>
+    <th>Tél. Expéditeur</th>
+    <th>Tél. Destinataire</th>
+    <th>Origine</th>
+    <th>Destination</th>
+    <th>Frais</th>
+    <th>% Frais</th>
+    <th>Montant récup.</th>
+    <th>Mode récup.</th>
+    <th>Date</th>
+</tr>
+</thead>
+
+<tbody id="usersTable">
+<tr>
+    <td colspan="12" style="text-align:center;">Chargement...</td>
+</tr>
+</tbody>
 </table>
 
 <script>
 async function loadUsers() {
     try {
-        const res = await fetch('https://monapi-bf4o.onrender.com/users/all/');
+        const res = await fetch('https://monapi-bf4o.onrender.com/users/json');
         const users = await res.json();
 
         const table = document.getElementById('usersTable');
         table.innerHTML = '';
 
+        if (users.length === 0) {
+            table.innerHTML = `
+              <tr>
+                <td colspan="12" style="text-align:center;">
+                  Aucun utilisateur trouvé
+                </td>
+              </tr>`;
+            return;
+        }
+
         users.forEach(user => {
             const row = document.createElement('tr');
+
             row.innerHTML = `
                 <td>${user.email}</td>
                 <td>${user.code}</td>
                 <td>${user.amount}</td>
+                <td>${user.senderPhone}</td>
+                <td>${user.receiverPhone}</td>
+                <td>${user.originLocation}</td>
+                <td>${user.destinationLocation}</td>
+                <td>${user.fees}</td>
+                <td>${user.feePercent}%</td>
+                <td>${user.recoveryAmount}</td>
+                <td>${user.recoveryMode}</td>
                 <td>${new Date(user.createdAt).toLocaleString()}</td>
             `;
+
             table.appendChild(row);
         });
+
     } catch (err) {
         console.error(err);
-        const table = document.getElementById('usersTable');
-        table.innerHTML = `<tr><td colspan="4" style="text-align:center;color:red;">Erreur lors du chargement des utilisateurs</td></tr>`;
+        document.getElementById('usersTable').innerHTML = `
+        <tr>
+            <td colspan="12" style="color:red;text-align:center;">
+                Erreur lors du chargement des utilisateurs
+            </td>
+        </tr>`;
     }
 }
 
-// Charger les utilisateurs au chargement de la page
+// Charger automatiquement
 loadUsers();
 </script>
 

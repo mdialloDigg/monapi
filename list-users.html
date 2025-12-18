@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Liste des utilisateurs</title>
+<title>Liste des transferts</title>
 
 <style>
 body {
@@ -17,54 +17,70 @@ h2 {
 
 table {
     border-collapse: collapse;
-    width: 95%;
-    margin: 40px auto;
+    width: 98%;
+    margin: 30px auto;
     background: white;
 }
 
 th, td {
     border: 1px solid #ccc;
     padding: 8px;
-    font-size: 14px;
+    font-size: 13px;
+    text-align: center;
 }
 
 th {
     background: #007bff;
     color: white;
-    text-align: center;
 }
 
-td {
-    text-align: center;
+.group-exp {
+    background: #e9f1ff;
+    font-weight: bold;
+}
+
+.group-dest {
+    background: #eaffea;
+    font-weight: bold;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Liste des utilisateurs</h2>
+<h2>📋 Liste des transferts</h2>
 
 <table>
 <thead>
 <tr>
+    <th colspan="7" class="group-exp">EXPÉDITEUR</th>
+    <th colspan="6" class="group-dest">DESTINATAIRE</th>
+</tr>
+<tr>
+    <!-- EXPÉDITEUR -->
+    <th>Prénom</th>
+    <th>Nom</th>
     <th>Email</th>
-    <th>Code</th>
-    <th>Montant</th>
-    <th>Tél. Expéditeur</th>
-    <th>Tél. Destinataire</th>
-    <th>Origine</th>
-    <th>Destination</th>
+    <th>Téléphone</th>
+    <th>Pays départ</th>
+    <th>Montant envoyé</th>
     <th>Frais</th>
-    <th>% Frais</th>
-    <th>Montant récup.</th>
-    <th>Mode récup.</th>
+
+    <!-- DESTINATAIRE -->
+    <th>Prénom</th>
+    <th>Nom</th>
+    <th>Téléphone</th>
+    <th>Pays destination</th>
+    <th>Montant reçu</th>
+    <th>Mode</th>
+
     <th>Date</th>
 </tr>
 </thead>
 
 <tbody id="usersTable">
 <tr>
-    <td colspan="12" style="text-align:center;">Chargement...</td>
+    <td colspan="14">Chargement...</td>
 </tr>
 </tbody>
 </table>
@@ -78,13 +94,11 @@ async function loadUsers() {
         const table = document.getElementById('usersTable');
         table.innerHTML = '';
 
-        if (users.length === 0) {
+        if (!users.length) {
             table.innerHTML = `
-              <tr>
-                <td colspan="12" style="text-align:center;">
-                  Aucun utilisateur trouvé
-                </td>
-              </tr>`;
+            <tr>
+                <td colspan="14">Aucun transfert trouvé</td>
+            </tr>`;
             return;
         }
 
@@ -92,17 +106,23 @@ async function loadUsers() {
             const row = document.createElement('tr');
 
             row.innerHTML = `
+                <!-- EXPÉDITEUR -->
+                <td>${user.senderFirstName}</td>
+                <td>${user.senderLastName}</td>
                 <td>${user.email}</td>
-                <td>${user.code}</td>
-                <td>${user.amount}</td>
                 <td>${user.senderPhone}</td>
-                <td>${user.receiverPhone}</td>
                 <td>${user.originLocation}</td>
-                <td>${user.destinationLocation}</td>
+                <td>${user.amount}</td>
                 <td>${user.fees}</td>
-                <td>${user.feePercent}%</td>
+
+                <!-- DESTINATAIRE -->
+                <td>${user.receiverFirstName}</td>
+                <td>${user.receiverLastName}</td>
+                <td>${user.receiverPhone}</td>
+                <td>${user.destinationLocation}</td>
                 <td>${user.recoveryAmount}</td>
                 <td>${user.recoveryMode}</td>
+
                 <td>${new Date(user.createdAt).toLocaleString()}</td>
             `;
 
@@ -113,14 +133,13 @@ async function loadUsers() {
         console.error(err);
         document.getElementById('usersTable').innerHTML = `
         <tr>
-            <td colspan="12" style="color:red;text-align:center;">
-                Erreur lors du chargement des utilisateurs
+            <td colspan="14" style="color:red;">
+                Erreur lors du chargement des données
             </td>
         </tr>`;
     }
 }
 
-// Charger automatiquement
 loadUsers();
 </script>
 

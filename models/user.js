@@ -1,55 +1,49 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  // Auth / identification
-  email: {
+
+  /* =========================
+     📤 EXPÉDITEUR
+  ========================= */
+  senderFirstName: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
 
-  password: {
-    type: String,
-    required: true
-  },
-
-  // Code transaction (1 lettre + 3 chiffres)
-  code: {
+  senderLastName: {
     type: String,
     required: true,
-    unique: true
+    trim: true
   },
 
-  // Montant principal
-  amount: {
-    type: Number,
-    required: true
+  email: {
+    type: String,
+    required: true,
+    trim: true
   },
 
-  // Téléphones
   senderPhone: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
 
-  receiverPhone: {
+  originCountry: {
     type: String,
     required: true
   },
 
-  // Lieux
   originLocation: {
     type: String,
     required: true
   },
 
-  destinationLocation: {
-    type: String,
+  amount: {
+    type: Number,
     required: true
   },
 
-  // Frais
   fees: {
     type: Number,
     required: true
@@ -60,7 +54,37 @@ const userSchema = new mongoose.Schema({
     required: true
   },
 
-  // Récupération
+  /* =========================
+     📥 DESTINATAIRE
+  ========================= */
+  receiverFirstName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  receiverLastName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  receiverPhone: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  destinationCountry: {
+    type: String,
+    required: true
+  },
+
+  destinationLocation: {
+    type: String,
+    required: true
+  },
+
   recoveryAmount: {
     type: Number,
     required: true
@@ -72,11 +96,25 @@ const userSchema = new mongoose.Schema({
     enum: ['cash', 'mobile_money', 'bank', 'autre']
   },
 
-  // Date
+  /* =========================
+     🔐 SÉCURITÉ / SYSTÈME
+  ========================= */
+  password: {
+    type: String,
+    required: true
+  },
+
+  code: {
+    type: String,
+    required: true,
+    unique: true
+  },
+
   createdAt: {
     type: Date,
     default: Date.now
   }
+
 });
 
 module.exports = mongoose.model('User', userSchema);

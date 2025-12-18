@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -7,6 +8,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname)); // pour servir les fichiers HTML
+
+// Afficher le formulaire HTML à distance
+app.get('/users', (req, res) => {
+  res.sendFile(path.join(__dirname, 'users.html'));
+});
+
+
 
 // Connexion MongoDB
 mongoose.connect('mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test')

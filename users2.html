@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Liste des utilisateurs</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+}
+table {
+    border-collapse: collapse;
+    width: 80%;
+    margin: 40px auto;
+    background: white;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+th {
+    background: #007bff;
+    color: white;
+}
+h2 {
+    text-align: center;
+    margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Liste des utilisateurs</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Code</th>
+            <th>Montant</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody id="usersTable">
+        <tr><td colspan="4">Chargement...</td></tr>
+    </tbody>
+</table>
+
+<script>
+fetch('https://monapi-bf4o.onrender.com/users/all')
+    .then(res => res.json())
+    .then(users => {
+        const table = document.getElementById('usersTable');
+        table.innerHTML = '';
+
+        if (users.length === 0) {
+            table.innerHTML = '<tr><td colspan="4">Aucun utilisateur</td></tr>';
+            return;
+        }
+
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.email}</td>
+                <td>${user.code}</td>
+                <td>${user.amount}</td>
+                <td>${new Date(user.createdAt).toLocaleString()}</td>
+            `;
+            table.appendChild(row);
+        });
+    })
+    .catch(err => {
+        document.getElementById('usersTable').innerHTML =
+            '<tr><td colspan="4">Erreur de chargement</td></tr>';
+    });
+</script>
+
+</body>
+</html>

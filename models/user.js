@@ -29,11 +29,6 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
-  originCountry: {
-    type: String,
-    required: true
-  },
-
   originLocation: {
     type: String,
     required: true
@@ -73,11 +68,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
-  },
-
-  destinationCountry: {
-    type: String,
-    required: true
   },
 
   destinationLocation: {

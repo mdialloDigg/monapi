@@ -12,7 +12,7 @@
 
         form {
             background: white;
-            width: 900px;
+            width: 950px;
             margin: 40px auto;
             padding: 20px;
             border-radius: 8px;
@@ -76,6 +76,9 @@
         <div class="box">
             <h4>👤 Expéditeur</h4>
 
+            <input type="text" id="senderFirstName" placeholder="Prénom expéditeur" required />
+            <input type="text" id="senderLastName" placeholder="Nom expéditeur" required />
+
             <input type="email" id="email" placeholder="Email expéditeur" required />
             <input type="password" id="password" placeholder="Mot de passe" required />
 
@@ -101,6 +104,9 @@
         <div class="box">
             <h4>👥 Destinataire</h4>
 
+            <input type="text" id="receiverFirstName" placeholder="Prénom destinataire" required />
+            <input type="text" id="receiverLastName" placeholder="Nom destinataire" required />
+
             <input type="text" id="receiverPhone" placeholder="Téléphone destinataire" required />
 
             <select id="destinationLocation" required>
@@ -114,7 +120,7 @@
             </select>
 
             <input type="number" id="recoveryAmount" placeholder="Montant à récupérer" required />
-            <input type="text" id="recoveryMode" placeholder="Mode de récupération (cash, mobile...)" required />
+            <input type="text" id="recoveryMode" placeholder="Mode de récupération" required />
         </div>
 
     </div>
@@ -135,6 +141,12 @@ document.getElementById('userForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const payload = {
+        senderFirstName: document.getElementById('senderFirstName').value,
+        senderLastName: document.getElementById('senderLastName').value,
+
+        receiverFirstName: document.getElementById('receiverFirstName').value,
+        receiverLastName: document.getElementById('receiverLastName').value,
+
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
         amount: Number(document.getElementById('amount').value),

@@ -11,9 +11,10 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // Afficher le formulaire HTML
-app.get('/users', (req, res) => {
-  res.sendFile(path.join(__dirname, 'users.html'));
+app.get('/users/all', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'users-all.html'));
 });
+
 
 // Connexion MongoDB
 mongoose.connect(

@@ -51,7 +51,7 @@ const User = mongoose.model('User', userSchema);
 // POST /users → créer une transaction
 app.post('/users', async (req, res) => {
   try {
-    const {
+    let {
       senderFirstName,
       senderLastName,
       password,
@@ -68,13 +68,19 @@ app.post('/users', async (req, res) => {
       recoveryMode
     } = req.body;
 
+    // Conversion en Number
+    amount = Number(amount);
+    fees = Number(fees);
+    feePercent = Number(feePercent);
+    recoveryAmount = Number(recoveryAmount);
+
     // Validation
     if (
       !senderFirstName || !senderLastName || !password ||
       !senderPhone || !originLocation ||
-      amount === undefined || fees === undefined || feePercent === undefined ||
+      isNaN(amount) || isNaN(fees) || isNaN(feePercent) ||
       !receiverFirstName || !receiverLastName || !receiverPhone ||
-      !destinationLocation || recoveryAmount === undefined || !recoveryMode
+      !destinationLocation || isNaN(recoveryAmount) || !recoveryMode
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
@@ -143,7 +149,7 @@ app.get('/users/all', async (req, res) => {
           th, td { border:1px solid #ccc; padding:8px; font-size:13px; text-align:center; }
           th { background:#007bff; color:#fff; }
           .exp { background:#e9f1ff; }
-          .dest { background:#ffdede; } /* changer couleur pour destination */
+          .dest { background:#ffdede; }
         </style>
       </head>
       <body>

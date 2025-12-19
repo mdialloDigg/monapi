@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Liste des transferts</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+}
+
+h2 {
+    text-align: center;
+    margin-top: 30px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 98%;
+    margin: 30px auto;
+    background: white;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    font-size: 13px;
+    text-align: center;
+}
+
+th {
+    background: #007bff;
+    color: white;
+}
+
+.group-exp {
+    background: #e9f1ff;
+    font-weight: bold;
+}
+
+.group-dest {
+    background: #eaffea;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<h2>📋 Liste des transferts</h2>
+
+<table>
+<thead>
+<tr>
+    <th colspan="7" class="group-exp">EXPÉDITEUR</th>
+    <th colspan="7" class="group-dest">DESTINATAIRE</th>
+</tr>
+<tr>
+    <!-- EXPÉDITEUR -->
+    <th>Prénom</th>
+    <th>Nom</th>
+    <th>Téléphone</th>
+    <th>Pays départ</th>
+    <th>Montant envoyé</th>
+    <th>Frais</th>
+    <th>Code</th>
+
+    <!-- DESTINATAIRE -->
+    <th>Prénom</th>
+    <th>Nom</th>
+    <th>Téléphone</th>
+    <th>Pays destination</th>
+    <th>Montant reçu</th>
+    <th>Mode</th>
+
+    <th>Date</th>
+</tr>
+</thead>
+
+<tbody id="usersTable">
+<tr>
+    <td colspan="14">Chargement...</td>
+</tr>
+</tbody>
+</table>
+
+<script>
+async function loadUsers() {
+    try {
+        const res = await fetch('https://monapi-bf4o.onrender.com/users/json');
+        const users = await res.json();
+
+        const table = document.getElementById('usersTable');
+        table.innerHTML = '';
+
+        if (!users.length) {
+            table.innerHTML = `
+            <tr>
+                <td colspan="14">Aucun transfert trouvé</td>
+            </tr>`;
+            return;
+        }
+
+        users.forEach(user => {
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <!-- EXPÉDITEUR -->
+                <td>${user.senderFirstName}</td>
+                <td>${user.senderLastName}</td>
+                <td>${user.senderPhone}</td>
+                <td>${user.originLocation}</td>
+                <td>${user.amount}</td>
+                <td>${user.fees}</td>
+                <td>${user.code}</td>
+
+                <!-- DESTINATAIRE -->
+                <td>${user.receiverFirstName}</td>
+                <td>${user.receiverLastName}</td>
+                <td>${user.receiverPhone}</td>
+                <td>${user.destinationLocation}</td>
+                <td>${user.recoveryAmount}</td>
+                <td>${user.recoveryMode}</td>
+
+                <td>${new Date(user.createdAt).toLocaleString()}</td>
+            `;
+
+            table.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById('usersTable').innerHTML = `
+        <tr>
+            <td colspan="14" style="color:red;">
+                Erreur lors du chargement des données
+            </td>
+        </tr>`;
+    }
+}
+
+loadUsers();
+</script>
+
+</body>
+</html>

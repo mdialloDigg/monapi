@@ -5,139 +5,201 @@
 <title>Liste des transferts</title>
 
 <style>
+:root {
+  --primary: #4f46e5;
+  --primary-light: #eef2ff;
+  --success: #16a34a;
+  --success-light: #ecfdf5;
+  --bg: #f8fafc;
+  --text: #1f2937;
+  --muted: #6b7280;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(120deg, #eef2ff, #f8fafc);
+  margin: 0;
+  padding: 20px;
+  color: var(--text);
 }
 
 h2 {
-    text-align: center;
-    margin-top: 30px;
+  text-align: center;
+  margin: 20px 0 30px;
+  font-weight: 600;
+  color: var(--primary);
 }
 
 table {
-    border-collapse: collapse;
-    width: 98%;
-    margin: 30px auto;
-    background: white;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  max-width: 1400px;
+  margin: auto;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
 th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    font-size: 13px;
-    text-align: center;
+  padding: 12px 10px;
+  font-size: 13px;
+  text-align: center;
 }
 
 th {
-    background: #007bff;
-    color: white;
+  background: var(--primary);
+  color: white;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
 }
 
 .group-exp {
-    background: #e9f1ff;
-    font-weight: bold;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  font-weight: 600;
 }
 
 .group-dest {
-    background: #eaffea;
-    font-weight: bold;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  font-weight: 600;
+}
+
+thead tr:nth-child(2) th {
+  background: #f1f5f9;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+tbody tr {
+  transition: background 0.2s ease;
+}
+
+tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+tbody tr:hover {
+  background: #eef2ff;
+}
+
+td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.code {
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.amount {
+  font-weight: 600;
+}
+
+.date {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.loading,
+.error {
+  text-align: center;
+  font-weight: 600;
+  padding: 20px;
+}
+
+.error {
+  color: #dc2626;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📋 Liste des transferts</h2>
+<h2>💸 Liste des transferts</h2>
 
 <table>
 <thead>
 <tr>
-    <th colspan="7" class="group-exp">EXPÉDITEUR</th>
-    <th colspan="7" class="group-dest">DESTINATAIRE</th>
+  <th colspan="7" class="group-exp">📤 Expéditeur</th>
+  <th colspan="7" class="group-dest">📥 Destinataire</th>
 </tr>
 <tr>
-    <!-- EXPÉDITEUR -->
-    <th>Prénom</th>
-    <th>Nom</th>
-    <th>Téléphone</th>
-    <th>Pays départ</th>
-    <th>Montant envoyé</th>
-    <th>Frais</th>
-    <th>Code</th>
+  <th>Prénom</th>
+  <th>Nom</th>
+  <th>Téléphone</th>
+  <th>Origine</th>
+  <th>Montant</th>
+  <th>Frais</th>
+  <th>Code</th>
 
-    <!-- DESTINATAIRE -->
-    <th>Prénom</th>
-    <th>Nom</th>
-    <th>Téléphone</th>
-    <th>Pays destination</th>
-    <th>Montant reçu</th>
-    <th>Mode</th>
-
-    <th>Date</th>
+  <th>Prénom</th>
+  <th>Nom</th>
+  <th>Téléphone</th>
+  <th>Destination</th>
+  <th>Reçu</th>
+  <th>Mode</th>
+  <th>Date</th>
 </tr>
 </thead>
 
 <tbody id="usersTable">
 <tr>
-    <td colspan="14">Chargement...</td>
+  <td colspan="14" class="loading">Chargement...</td>
 </tr>
 </tbody>
 </table>
 
 <script>
 async function loadUsers() {
-    try {
-        const res = await fetch('https://monapi-bf4o.onrender.com/users/json');
-        const users = await res.json();
+  try {
+    const res = await fetch('https://monapi-bf4o.onrender.com/users/json');
+    const users = await res.json();
 
-        const table = document.getElementById('usersTable');
-        table.innerHTML = '';
+    const table = document.getElementById('usersTable');
+    table.innerHTML = '';
 
-        if (!users.length) {
-            table.innerHTML = `
-            <tr>
-                <td colspan="14">Aucun transfert trouvé</td>
-            </tr>`;
-            return;
-        }
-
-        users.forEach(user => {
-            const row = document.createElement('tr');
-
-            row.innerHTML = `
-                <!-- EXPÉDITEUR -->
-                <td>${user.senderFirstName}</td>
-                <td>${user.senderLastName}</td>
-                <td>${user.senderPhone}</td>
-                <td>${user.originLocation}</td>
-                <td>${user.amount}</td>
-                <td>${user.fees}</td>
-                <td>${user.code}</td>
-
-                <!-- DESTINATAIRE -->
-                <td>${user.receiverFirstName}</td>
-                <td>${user.receiverLastName}</td>
-                <td>${user.receiverPhone}</td>
-                <td>${user.destinationLocation}</td>
-                <td>${user.recoveryAmount}</td>
-                <td>${user.recoveryMode}</td>
-
-                <td>${new Date(user.createdAt).toLocaleString()}</td>
-            `;
-
-            table.appendChild(row);
-        });
-
-    } catch (err) {
-        console.error(err);
-        document.getElementById('usersTable').innerHTML = `
+    if (!users.length) {
+      table.innerHTML = `
         <tr>
-            <td colspan="14" style="color:red;">
-                Erreur lors du chargement des données
-            </td>
+          <td colspan="14" class="loading">Aucun transfert trouvé</td>
         </tr>`;
+      return;
     }
+
+    users.forEach(user => {
+      const row = document.createElement('tr');
+
+      row.innerHTML = `
+        <td>${user.senderFirstName}</td>
+        <td>${user.senderLastName}</td>
+        <td>${user.senderPhone}</td>
+        <td>${user.originLocation}</td>
+        <td class="amount">${user.amount}</td>
+        <td>${user.fees}</td>
+        <td class="code">${user.code}</td>
+
+        <td>${user.receiverFirstName}</td>
+        <td>${user.receiverLastName}</td>
+        <td>${user.receiverPhone}</td>
+        <td>${user.destinationLocation}</td>
+        <td class="amount">${user.recoveryAmount}</td>
+        <td>${user.recoveryMode}</td>
+        <td class="date">${new Date(user.createdAt).toLocaleString()}</td>
+      `;
+
+      table.appendChild(row);
+    });
+
+  } catch (err) {
+    document.getElementById('usersTable').innerHTML = `
+      <tr>
+        <td colspan="14" class="error">Erreur lors du chargement des données</td>
+      </tr>`;
+  }
 }
 
 loadUsers();

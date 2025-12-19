@@ -34,40 +34,13 @@ th {
     color: white;
 }
 
-/* Groupes */
 .group-exp {
-    background: #e3ecff;
+    background: #e9f1ff;
     font-weight: bold;
 }
 
 .group-dest {
-    background: #e6f7ea;
-    font-weight: bold;
-}
-
-/* 🎨 Couleurs intelligentes par cellule */
-.origin {
-    background: #eef4ff;
-}
-
-.destination {
-    background: #ecfff1;
-}
-
-.amount {
-    font-weight: bold;
-    color: #004085;
-}
-
-.recovery {
-    font-weight: bold;
-    color: #155724;
-}
-
-/* Totaux */
-tfoot td {
-    background: #222;
-    color: white;
+    background: #eaffea;
     font-weight: bold;
 }
 </style>
@@ -110,8 +83,6 @@ tfoot td {
     <td colspan="14">Chargement...</td>
 </tr>
 </tbody>
-
-<tfoot id="totalsRow"></tfoot>
 </table>
 
 <script>
@@ -121,10 +92,7 @@ async function loadUsers() {
         const users = await res.json();
 
         const table = document.getElementById('usersTable');
-        const totalsRow = document.getElementById('totalsRow');
-
         table.innerHTML = '';
-        totalsRow.innerHTML = '';
 
         if (!users.length) {
             table.innerHTML = `
@@ -134,13 +102,7 @@ async function loadUsers() {
             return;
         }
 
-        let totalAmount = 0;
-        let totalRecovery = 0;
-
         users.forEach(user => {
-            totalAmount += Number(user.amount);
-            totalRecovery += Number(user.recoveryAmount);
-
             const row = document.createElement('tr');
 
             row.innerHTML = `
@@ -148,8 +110,8 @@ async function loadUsers() {
                 <td>${user.senderFirstName}</td>
                 <td>${user.senderLastName}</td>
                 <td>${user.senderPhone}</td>
-                <td class="origin">${user.originLocation}</td>
-                <td class="amount">${user.amount}</td>
+                <td>${user.originLocation}</td>
+                <td>${user.amount}</td>
                 <td>${user.fees}</td>
                 <td>${user.code}</td>
 
@@ -157,8 +119,8 @@ async function loadUsers() {
                 <td>${user.receiverFirstName}</td>
                 <td>${user.receiverLastName}</td>
                 <td>${user.receiverPhone}</td>
-                <td class="destination">${user.destinationLocation}</td>
-                <td class="recovery">${user.recoveryAmount}</td>
+                <td>${user.destinationLocation}</td>
+                <td>${user.recoveryAmount}</td>
                 <td>${user.recoveryMode}</td>
 
                 <td>${new Date(user.createdAt).toLocaleString()}</td>
@@ -166,16 +128,6 @@ async function loadUsers() {
 
             table.appendChild(row);
         });
-
-        /* ✅ Ligne des totaux */
-        totalsRow.innerHTML = `
-        <tr>
-            <td colspan="4">TOTAL</td>
-            <td>${totalAmount}</td>
-            <td colspan="6"></td>
-            <td>${totalRecovery}</td>
-            <td colspan="2"></td>
-        </tr>`;
 
     } catch (err) {
         console.error(err);

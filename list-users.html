@@ -5,99 +5,142 @@
 <title>Liste des transferts</title>
 
 <style>
-:root {
-  --primary:#4f46e5;
-  --success:#16a34a;
-}
 body {
-  font-family: Segoe UI, Arial;
-  background:#f8fafc;
-  padding:20px;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
 }
+
+h2 {
+    text-align: center;
+    margin-top: 30px;
+}
+
 table {
-  width:100%;
-  background:white;
-  border-collapse:collapse;
+    border-collapse: collapse;
+    width: 98%;
+    margin: 30px auto;
+    background: white;
 }
-th,td {
-  padding:10px;
-  border-bottom:1px solid #e5e7eb;
-  text-align:center;
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    font-size: 13px;
+    text-align: center;
 }
-th { background:var(--primary); color:white; }
-.total-form {
-  margin-top:30px;
-  background:white;
-  padding:20px;
+
+th {
+    background: #007bff;
+    color: white;
+}
+
+.group-exp {
+    background: #e9f1ff;
+    font-weight: bold;
+}
+
+.group-dest {
+    background: #eaffea;
+    font-weight: bold;
 }
 </style>
 </head>
 
 <body>
 
-<h2>💸 Liste des transferts</h2>
-
-<div id="content" style="display:none;">
+<h2>📋 Liste des transferts</h2>
 
 <table>
 <thead>
 <tr>
-<th>Expéditeur</th><th>Montant</th><th>Frais</th>
-<th>Destinataire</th><th>Reçu</th><th>Code</th><th>Date</th>
+    <th colspan="7" class="group-exp">EXPÉDITEUR</th>
+    <th colspan="7" class="group-dest">DESTINATAIRE</th>
+</tr>
+<tr>
+    <!-- EXPÉDITEUR -->
+    <th>Prénom</th>
+    <th>Nom</th>
+    <th>Téléphone</th>
+    <th>Pays départ</th>
+    <th>Montant envoyé</th>
+    <th>Frais</th>
+    <th>Code</th>
+
+    <!-- DESTINATAIRE -->
+    <th>Prénom</th>
+    <th>Nom</th>
+    <th>Téléphone</th>
+    <th>Pays destination</th>
+    <th>Montant reçu</th>
+    <th>Mode</th>
+
+    <th>Date</th>
 </tr>
 </thead>
+
 <tbody id="usersTable">
-<tr><td colspan="7">Chargement...</td></tr>
+<tr>
+    <td colspan="14">Chargement...</td>
+</tr>
 </tbody>
 </table>
 
-<div class="total-form">
-<h3>📊 Totaux</h3>
-<input id="totalAmount" readonly>
-<input id="totalFees" readonly>
-<input id="totalReceived" readonly>
-</div>
-
-</div>
-
 <script>
-const code = prompt("Code d'accès");
-if (code !== "123") {
-  document.body.innerHTML = "<h2>Accès refusé</h2>";
-} else {
-  document.getElementById('content').style.display = "block";
-  loadUsers();
+async function loadUsers() {
+    try {
+        const res = await fetch('https://monapi-bf4o.onrender.com/users/json');
+        const users = await res.json();
+
+        const table = document.getElementById('usersTable');
+        table.innerHTML = '';
+
+        if (!users.length) {
+            table.innerHTML = `
+            <tr>
+                <td colspan="14">Aucun transfert trouvé</td>
+            </tr>`;
+            return;
+        }
+
+        users.forEach(user => {
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <!-- EXPÉDITEUR -->
+                <td>${user.senderFirstName}</td>
+                <td>${user.senderLastName}</td>
+                <td>${user.senderPhone}</td>
+                <td>${user.originLocation}</td>
+                <td>${user.amount}</td>
+                <td>${user.fees}</td>
+                <td>${user.code}</td>
+
+                <!-- DESTINATAIRE -->
+                <td>${user.receiverFirstName}</td>
+                <td>${user.receiverLastName}</td>
+                <td>${user.receiverPhone}</td>
+                <td>${user.destinationLocation}</td>
+                <td>${user.recoveryAmount}</td>
+                <td>${user.recoveryMode}</td>
+
+                <td>${new Date(user.createdAt).toLocaleString()}</td>
+            `;
+
+            table.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById('usersTable').innerHTML = `
+        <tr>
+            <td colspan="14" style="color:red;">
+                Erreur lors du chargement des données
+            </td>
+        </tr>`;
+    }
 }
 
-async function loadUsers(){
-  const res = await fetch('/users/json');
-  const users = await res.json();
-
-  let ta=0, tf=0, tr=0;
-  const t = document.getElementById('usersTable');
-  t.innerHTML="";
-
-  users.forEach(u=>{
-    ta+=+u.amount;
-    tf+=+u.fees;
-    tr+=+u.recoveryAmount;
-
-    t.innerHTML+=`
-    <tr>
-      <td>${u.senderFirstName}</td>
-      <td>${u.amount}</td>
-      <td>${u.fees}</td>
-      <td>${u.receiverFirstName}</td>
-      <td>${u.recoveryAmount}</td>
-      <td>${u.code}</td>
-      <td>${new Date(u.createdAt).toLocaleString()}</td>
-    </tr>`;
-  });
-
-  totalAmount.value = ta;
-  totalFees.value = tf;
-  totalReceived.value = tr;
-}
+loadUsers();
 </script>
 
 </body>

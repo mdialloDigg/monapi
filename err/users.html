@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Créer un transfert</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f2f2;
+}
+
+form {
+  background: white;
+  width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.container {
+  display: flex;
+  gap: 20px;
+}
+
+.box {
+  flex: 1;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.origin {
+  background: #e9f1ff;
+}
+
+.dest {
+  background: #ffdede;
+}
+
+h3, h4 {
+  text-align: center;
+}
+
+input, select, button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 10px;
+  box-sizing: border-box;
+}
+
+button {
+  margin-top: 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#message {
+  text-align: center;
+  margin-top: 15px;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<form id="form">
+<h3>💸 Créer un transfert</h3>
+
+<div class="container">
+
+  <div class="box origin">
+    <h4>📤 Origine</h4>
+    <input id="senderFirstName" placeholder="Prénom expéditeur" required>
+    <input id="senderLastName" placeholder="Nom expéditeur" required>
+    <input id="senderPhone" placeholder="Téléphone expéditeur" required>
+    
+    <select id="originLocation" required>
+      <option value="">Pays / Ville de départ</option>
+      <option>Conakry</option>
+      <option>Labé</option>
+      <option>France</option>
+      <option>Belgique</option>
+      <option>New York</option>
+      <option>Atlanta</option>
+      <option>Allemagne</option>
+      <option>Dubaï</option>
+      <option>Chine</option>
+    </select>
+
+    <input id="amount" type="number" placeholder="Montant" required>
+    <input id="fees" type="number" placeholder="Frais" required>
+    <input id="feePercent" type="number" placeholder="% Frais" required>
+  </div>
+
+  <div class="box dest">
+    <h4>📥 Destination</h4>
+    <input id="receiverFirstName" placeholder="Prénom destinataire" required>
+    <input id="receiverLastName" placeholder="Nom destinataire" required>
+    <input id="receiverPhone" placeholder="Téléphone destinataire" required>
+
+    <select id="destinationLocation" required>
+      <option value="">Pays / Ville destination</option>
+      <option>Conakry</option>
+      <option>Labé</option>
+      <option>France</option>
+      <option>Belgique</option>
+      <option>New York</option>
+      <option>Atlanta</option>
+      <option>Allemagne</option>
+      <option>Dubaï</option>
+      <option>Chine</option>
+    </select>
+
+    <input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
+    <input id="recoveryMode" placeholder="Mode de récupération" required>
+  </div>
+
+</div>
+
+<input id="password" type="password" placeholder="Mot de passe" required>
+
+<button type="submit">💾 Enregistrer</button>
+<p id="message"></p>
+</form>
+
+<script>
+document.getElementById('form').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const payload = {
+    senderFirstName: document.getElementById('senderFirstName').value.trim(),
+    senderLastName: document.getElementById('senderLastName').value.trim(),
+    senderPhone: document.getElementById('senderPhone').value.trim(),
+    originLocation: document.getElementById('originLocation').value,
+    amount: Number(document.getElementById('amount').value),
+    fees: Number(document.getElementById('fees').value),
+    feePercent: Number(document.getElementById('feePercent').value),
+    receiverFirstName: document.getElementById('receiverFirstName').value.trim(),
+    receiverLastName: document.getElementById('receiverLastName').value.trim(),
+    receiverPhone: document.getElementById('receiverPhone').value.trim(),
+    destinationLocation: document.getElementById('destinationLocation').value,
+    recoveryAmount: Number(document.getElementById('recoveryAmount').value),
+    recoveryMode: document.getElementById('recoveryMode').value.trim(),
+    password: document.getElementById('password').value
+  };
+
+  const messageEl = document.getElementById('message');
+
+  try {
+    const res = await fetch('/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      messageEl.style.color = 'green';
+      messageEl.innerText = data.message + ' | Code: ' + data.code;
+      document.getElementById('form').reset();
+    } else {
+      messageEl.style.color = 'red';
+      messageEl.innerText = data.message || 'Erreur serveur';
+    }
+  } catch (err) {
+    messageEl.style.color = 'red';
+    messageEl.innerText = 'Erreur serveur';
+  }
+});
+</script>
+
+</body>
+</html>

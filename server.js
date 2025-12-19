@@ -70,24 +70,28 @@ app.post('/users', async (req, res) => {
 
     console.log('BODY RECU:', req.body);
 
-    // Validation
+    // Validation sécurisée
     if (
       !senderFirstName || !senderLastName || !password ||
       !senderPhone || !originLocation ||
-      !amount || !fees || !feePercent ||
+      amount == null || fees == null || feePercent == null ||
       !receiverFirstName || !receiverLastName || !receiverPhone ||
-      !destinationLocation || !recoveryAmount || !recoveryMode
+      !destinationLocation || recoveryAmount == null || !recoveryMode
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    // Convertir en nombres si nécessaire
+    // Convertir en nombres
     const amt = Number(amount);
     const fee = Number(fees);
     const feeP = Number(feePercent);
     const recoveryAmt = Number(recoveryAmount);
 
-    // Générer un code aléatoire (A123)
+    if (isNaN(amt) || isNaN(fee) || isNaN(feeP) || isNaN(recoveryAmt)) {
+      return res.status(400).json({ message: 'Les champs numériques doivent être valides' });
+    }
+
+    // Générer un code aléatoire
     const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
     const number = Math.floor(100 + Math.random() * 900);
     const code = letter + number;
@@ -114,7 +118,6 @@ app.post('/users', async (req, res) => {
     });
 
     await user.save();
-
     res.status(201).json({ message: '✅ Transfert enregistré avec succès', code });
 
   } catch (err) {
@@ -123,7 +126,7 @@ app.post('/users', async (req, res) => {
   }
 });
 
-// GET /users/json → liste JSON
+// GET JSON
 app.get('/users/json', async (req, res) => {
   try {
     const users = await User.find({}, { password: 0 });
@@ -134,7 +137,7 @@ app.get('/users/json', async (req, res) => {
   }
 });
 
-// GET /users/all → afficher HTML
+// GET HTML
 app.get('/users/all', async (req, res) => {
   try {
     const users = await User.find({}, { password: 0 });
@@ -171,22 +174,22 @@ app.get('/users/all', async (req, res) => {
     users.forEach(u => {
       html += `
         <tr>
-          <td>${u.senderFirstName}</td>
-          <td>${u.senderLastName}</td>
-          <td>${u.senderPhone}</td>
-          <td>${u.originLocation}</td>
-          <td>${u.amount}</td>
-          <td>${u.fees}</td>
-          <td>${u.code}</td>
+          <td>${u.senderFirstName || ''}</td>
+          <td>${u.senderLastName || ''}</td>
+          <td>${u.senderPhone || ''}</td>
+          <td>${u.originLocation || ''}</td>
+          <td>${u.amount ?? ''}</td>
+          <td>${u.fees ?? ''}</td>
+          <td>${u.code || ''}</td>
 
-          <td>${u.receiverFirstName}</td>
-          <td>${u.receiverLastName}</td>
-          <td>${u.receiverPhone}</td>
-          <td>${u.destinationLocation}</td>
-          <td>${u.recoveryAmount}</td>
-          <td>${u.recoveryMode}</td>
+          <td>${u.receiverFirstName || ''}</td>
+          <td>${u.receiverLastName || ''}</td>
+          <td>${u.receiverPhone || ''}</td>
+          <td>${u.destinationLocation || ''}</td>
+          <td>${u.recoveryAmount ?? ''}</td>
+          <td>${u.recoveryMode || ''}</td>
 
-          <td>${new Date(u.createdAt).toLocaleString()}</td>
+          <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
         </tr>`;
     });
 

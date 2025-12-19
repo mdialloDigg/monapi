@@ -17,8 +17,7 @@ app.get('/users', (req, res) => {
 
 // Connexion MongoDB
 mongoose.connect(
-  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test',
-  { useNewUrlParser: true, useUnifiedTopology: true }
+  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
 )
 .then(() => console.log('✅ MongoDB connecté'))
 .catch(err => console.error('❌ MongoDB erreur:', err));

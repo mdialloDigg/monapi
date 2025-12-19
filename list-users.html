@@ -120,6 +120,9 @@ tbody tr:nth-child(even) {
 
 <h2>💸 Liste des transferts</h2>
 
+<!-- Conteneur du tableau + formulaire -->
+<div id="content" style="display:none;">
+
 <table>
 <thead>
 <tr>
@@ -174,7 +177,21 @@ tbody tr:nth-child(even) {
   </div>
 </div>
 
+</div>
+
 <script>
+// ===== DEMANDER LE CODE =====
+const accessCode = prompt("Veuillez entrer le code d'accès pour voir le formulaire :");
+
+if (accessCode !== "123") {
+  alert("Code incorrect ! Accès refusé.");
+  document.body.innerHTML = "<h2 style='text-align:center;color:red;'>Accès refusé</h2>";
+} else {
+  document.getElementById('content').style.display = "block";
+  loadUsers();
+}
+
+// ===== FONCTION CHARGEMENT DES TRANSFERTS =====
 async function loadUsers() {
   try {
     const res = await fetch('https://monapi-bf4o.onrender.com/users/json');
@@ -225,15 +242,9 @@ async function loadUsers() {
       table.appendChild(row);
     });
 
-    // 🔥 AFFICHAGE DES TOTAUX DANS LE FORMULAIRE
-    document.getElementById('totalAmount').value =
-      totalAmount.toLocaleString();
-
-    document.getElementById('totalFees').value =
-      totalFees.toLocaleString();
-
-    document.getElementById('totalReceived').value =
-      totalReceived.toLocaleString();
+    document.getElementById('totalAmount').value = totalAmount.toLocaleString();
+    document.getElementById('totalFees').value = totalFees.toLocaleString();
+    document.getElementById('totalReceived').value = totalReceived.toLocaleString();
 
   } catch (err) {
     document.getElementById('usersTable').innerHTML = `
@@ -242,8 +253,6 @@ async function loadUsers() {
       </tr>`;
   }
 }
-
-loadUsers();
 </script>
 
 </body>

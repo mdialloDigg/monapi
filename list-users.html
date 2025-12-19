@@ -240,7 +240,7 @@ async function loadUsers() {
         <td class="date">${new Date(user.createdAt).toLocaleString()}</td>
       `;
       table.appendChild(row);
-    });
+    }); 
 
     document.getElementById('totalAmount').value = totalAmount.toLocaleString();
     document.getElementById('totalFees').value = totalFees.toLocaleString();

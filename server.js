@@ -54,7 +54,6 @@ app.post('/users', async (req, res) => {
     const {
       senderFirstName,
       senderLastName,
-      password,
       senderPhone,
       originLocation,
       amount,
@@ -65,33 +64,18 @@ app.post('/users', async (req, res) => {
       receiverPhone,
       destinationLocation,
       recoveryAmount,
-      recoveryMode
+      recoveryMode,
+      password
     } = req.body;
 
-    console.log('BODY RECU:', req.body);
-
-    // Validation sécurisée
-    if (
-      !senderFirstName || !senderLastName || !password ||
-      !senderPhone || !originLocation ||
-      amount == null || fees == null || feePercent == null ||
-      !receiverFirstName || !receiverLastName || !receiverPhone ||
-      !destinationLocation || recoveryAmount == null || !recoveryMode
-    ) {
-      return res.status(400).json({ message: 'Tous les champs sont requis' });
+    // Validation stricte
+    if (!senderFirstName || !senderLastName || !senderPhone || !originLocation ||
+        !receiverFirstName || !receiverLastName || !receiverPhone || !destinationLocation ||
+        !recoveryMode || !password || isNaN(amount) || isNaN(fees) || isNaN(feePercent) || isNaN(recoveryAmount)) {
+      return res.status(400).json({ message: 'Tous les champs sont requis et doivent être valides' });
     }
 
-    // Convertir en nombres
-    const amt = Number(amount);
-    const fee = Number(fees);
-    const feeP = Number(feePercent);
-    const recoveryAmt = Number(recoveryAmount);
-
-    if (isNaN(amt) || isNaN(fee) || isNaN(feeP) || isNaN(recoveryAmt)) {
-      return res.status(400).json({ message: 'Les champs numériques doivent être valides' });
-    }
-
-    // Générer un code aléatoire
+    // Générer un code aléatoire (A123)
     const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
     const number = Math.floor(100 + Math.random() * 900);
     const code = letter + number;
@@ -104,14 +88,14 @@ app.post('/users', async (req, res) => {
       senderLastName,
       senderPhone,
       originLocation,
-      amount: amt,
-      fees: fee,
-      feePercent: feeP,
+      amount: Number(amount),
+      fees: Number(fees),
+      feePercent: Number(feePercent),
       receiverFirstName,
       receiverLastName,
       receiverPhone,
       destinationLocation,
-      recoveryAmount: recoveryAmt,
+      recoveryAmount: Number(recoveryAmount),
       recoveryMode,
       password: hashedPassword,
       code
@@ -126,21 +110,21 @@ app.post('/users', async (req, res) => {
   }
 });
 
-// GET JSON
+// GET /users/json → liste JSON
 app.get('/users/json', async (req, res) => {
   try {
-    const users = await User.find({}, { password: 0 });
+    const users = await User.find({}, { password: 0, __v: 0 });
     res.json(users);
   } catch (err) {
-    console.error(err);
+    console.error('ERROR GET /users/json:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// GET HTML
+// GET /users/all → afficher HTML
 app.get('/users/all', async (req, res) => {
   try {
-    const users = await User.find({}, { password: 0 });
+    const users = await User.find({}, { password: 0, __v: 0 });
 
     let html = `
       <!DOCTYPE html>
@@ -174,22 +158,22 @@ app.get('/users/all', async (req, res) => {
     users.forEach(u => {
       html += `
         <tr>
-          <td>${u.senderFirstName || ''}</td>
-          <td>${u.senderLastName || ''}</td>
-          <td>${u.senderPhone || ''}</td>
-          <td>${u.originLocation || ''}</td>
-          <td>${u.amount ?? ''}</td>
-          <td>${u.fees ?? ''}</td>
-          <td>${u.code || ''}</td>
+          <td>${u.senderFirstName}</td>
+          <td>${u.senderLastName}</td>
+          <td>${u.senderPhone}</td>
+          <td>${u.originLocation}</td>
+          <td>${u.amount}</td>
+          <td>${u.fees}</td>
+          <td>${u.code}</td>
 
-          <td>${u.receiverFirstName || ''}</td>
-          <td>${u.receiverLastName || ''}</td>
-          <td>${u.receiverPhone || ''}</td>
-          <td>${u.destinationLocation || ''}</td>
-          <td>${u.recoveryAmount ?? ''}</td>
-          <td>${u.recoveryMode || ''}</td>
+          <td>${u.receiverFirstName}</td>
+          <td>${u.receiverLastName}</td>
+          <td>${u.receiverPhone}</td>
+          <td>${u.destinationLocation}</td>
+          <td>${u.recoveryAmount}</td>
+          <td>${u.recoveryMode}</td>
 
-          <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
+          <td>${new Date(u.createdAt).toLocaleString()}</td>
         </tr>`;
     });
 
@@ -197,7 +181,7 @@ app.get('/users/all', async (req, res) => {
     res.send(html);
 
   } catch (err) {
-    console.error(err);
+    console.error('ERROR GET /users/all:', err);
     res.status(500).send('Erreur serveur');
   }
 });

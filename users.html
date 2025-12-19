@@ -2,80 +2,67 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Nouveau transfert</title>
+<title>Créer un transfert</title>
 
 <style>
 body {
   font-family: Arial, sans-serif;
-  background: linear-gradient(to right, #f4f4f4, #e9f1ff);
+  background: #eef2f7;
 }
 
-.container {
-  max-width: 900px;
-  margin: 40px auto;
-  background: white;
-  padding: 25px;
+form {
+  background: #fff;
+  width: 1000px;
+  margin: 30px auto;
+  padding: 20px;
   border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
 h2 {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
-.row {
+.container {
   display: flex;
   gap: 20px;
-  margin-bottom: 20px;
 }
 
 .box {
   flex: 1;
-  padding: 20px;
+  padding: 15px;
   border-radius: 8px;
 }
 
 .origin {
   background: #e9f1ff;
-  border-left: 6px solid #007bff;
+  border: 2px solid #007bff;
 }
 
 .destination {
   background: #eaffea;
-  border-left: 6px solid #28a745;
+  border: 2px solid #28a745;
 }
 
 .box h3 {
-  margin-top: 0;
   text-align: center;
+  margin-bottom: 15px;
 }
 
-label {
-  display: block;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
-input, select {
+input, select, button {
   width: 100%;
   padding: 8px;
-  margin-top: 5px;
-}
-
-.center {
-  text-align: center;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 button {
-  padding: 12px 40px;
-  font-size: 16px;
+  margin-top: 20px;
   background: #007bff;
-  color: white;
+  color: #fff;
+  font-size: 16px;
   border: none;
-  border-radius: 30px;
   cursor: pointer;
+  border-radius: 5px;
 }
 
 button:hover {
@@ -86,119 +73,98 @@ button:hover {
 
 <body>
 
-<div class="container">
-<h2>📦 Nouveau transfert</h2>
-
 <form id="transferForm">
+<h2>💸 Création d’un transfert</h2>
 
-  <div class="row">
-    <!-- ORIGINE -->
-    <div class="box origin">
-      <h3>📤 Origine</h3>
+<div class="container">
 
-      <label>Prénom expéditeur</label>
-      <input type="text" name="senderFirstName" required>
+<!-- ================= ORIGINE ================= -->
+<div class="box origin">
+<h3>📤 ORIGINE</h3>
 
-      <label>Nom expéditeur</label>
-      <input type="text" name="senderLastName" required>
+<input type="text" name="senderFirstName" placeholder="Prénom expéditeur" required>
+<input type="text" name="senderLastName" placeholder="Nom expéditeur" required>
+<input type="text" name="senderPhone" placeholder="Téléphone expéditeur" required>
 
-      <label>Téléphone</label>
-      <input type="text" name="senderPhone" required>
+<select name="originLocation" required>
+  <option value="">🌍 Lieu de départ</option>
+  <option>Conakry</option>
+  <option>Labé</option>
+  <option>France</option>
+  <option>Belgique</option>
+  <option>New York</option>
+  <option>Atlanta</option>
+  <option>Allemagne</option>
+  <option>Dubaï</option>
+  <option>Chine</option>
+</select>
 
-      <label>Lieu de départ</label>
-      <select name="originLocation" required>
-        <option value="">-- Sélectionner --</option>
-        <option>Conakry</option>
-        <option>Labé</option>
-        <option>France</option>
-        <option>Belgique</option>
-        <option>New York</option>
-        <option>Atlanta</option>
-        <option>Allemagne</option>
-        <option>Dubaï</option>
-        <option>Chine</option>
-      </select>
-    </div>
+<input type="number" name="amount" placeholder="Montant envoyé" required>
+<input type="number" name="fees" placeholder="Frais" required>
+<input type="number" name="feePercent" placeholder="% frais" required>
 
-    <!-- DESTINATION -->
-    <div class="box destination">
-      <h3>📥 Destination</h3>
-
-      <label>Prénom destinataire</label>
-      <input type="text" name="receiverFirstName" required>
-
-      <label>Nom destinataire</label>
-      <input type="text" name="receiverLastName" required>
-
-      <label>Téléphone</label>
-      <input type="text" name="receiverPhone" required>
-
-      <label>Lieu de destination</label>
-      <select name="destinationLocation" required>
-        <option value="">-- Sélectionner --</option>
-        <option>Conakry</option>
-        <option>Labé</option>
-        <option>France</option>
-        <option>Belgique</option>
-        <option>New York</option>
-        <option>Atlanta</option>
-        <option>Allemagne</option>
-        <option>Dubaï</option>
-        <option>Chine</option>
-      </select>
-    </div>
-  </div>
-
-  <!-- TRANSACTION -->
-  <div class="row">
-    <div class="box" style="background:#fff3cd;border-left:6px solid #ffc107;">
-      <h3 style="text-align:center;">💰 Transaction</h3>
-
-      <label>Montant envoyé</label>
-      <input type="number" name="amount" required>
-
-      <label>Frais</label>
-      <input type="number" name="fees" required>
-
-      <label>Pourcentage frais</label>
-      <input type="number" name="feePercent" required>
-
-      <label>Montant reçu</label>
-      <input type="number" name="recoveryAmount" required>
-
-      <label>Mode de récupération</label>
-      <select name="recoveryMode" required>
-        <option value="">-- Sélectionner --</option>
-        <option>Cash</option>
-        <option>Mobile Money</option>
-        <option>Virement bancaire</option>
-      </select>
-
-      <label>Mot de passe</label>
-      <input type="password" name="password" required>
-    </div>
-  </div>
-
-  <div class="center">
-    <button type="submit">💾 Enregistrer le transfert</button>
-  </div>
-
-</form>
 </div>
+
+<!-- ================= DESTINATION ================= -->
+<div class="box destination">
+<h3>📥 DESTINATION</h3>
+
+<input type="text" name="receiverFirstName" placeholder="Prénom destinataire" required>
+<input type="text" name="receiverLastName" placeholder="Nom destinataire" required>
+<input type="text" name="receiverPhone" placeholder="Téléphone destinataire" required>
+
+<select name="destinationLocation" required>
+  <option value="">🌍 Lieu de destination</option>
+  <option>Conakry</option>
+  <option>Labé</option>
+  <option>France</option>
+  <option>Belgique</option>
+  <option>New York</option>
+  <option>Atlanta</option>
+  <option>Allemagne</option>
+  <option>Dubaï</option>
+  <option>Chine</option>
+</select>
+
+<input type="number" name="recoveryAmount" placeholder="Montant à recevoir" required>
+<input type="text" name="recoveryMode" placeholder="Mode de récupération" required>
+
+<input type="password" name="password" placeholder="Mot de passe" required>
+</div>
+
+</div>
+
+<button type="submit">💾 Enregistrer le transfert</button>
+</form>
 
 <script>
 document.getElementById('transferForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target));
 
-  const res = await fetch('/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
 
-  const result = await res.json();
-  alert(result.message || 'Transfert enregistré');
+  try {
+    const res = await fetch('http://localhost:3000/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      alert(result.message || 'Erreur');
+      return;
+    }
+
+    alert('✅ Transfert enregistré\nCode : ' + result.code);
+    e.target.reset();
+
+  } catch (err) {
+    console.error(err);
+    alert('❌ Erreur serveur');
+  }
 });
 </script>
 

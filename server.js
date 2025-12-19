@@ -1,58 +1,142 @@
-app.get('/users/all', async (req, res) => {
+const path = require('path');
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(__dirname));
+
+/* =========================
+   📄 PAGE FORMULAIRE
+========================= */
+app.get('/users', (req, res) => {
+  res.sendFile(path.join(__dirname, 'users.html'));
+});
+
+/* =========================
+   🔗 MONGODB
+========================= */
+mongoose.connect(
+  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
+)
+.then(() => console.log('✅ MongoDB connecté'))
+.catch(err => console.error('❌ MongoDB erreur:', err));
+
+/* =========================
+   📦 SCHEMA
+========================= */
+const userSchema = new mongoose.Schema({
+  senderFirstName: String,
+  senderLastName: String,
+  senderPhone: String,
+  originLocation: String,
+
+  amount: Number,
+  fees: Number,
+  feePercent: Number,
+
+  receiverFirstName: String,
+  receiverLastName: String,
+  receiverPhone: String,
+  destinationLocation: String,
+
+  recoveryAmount: Number,
+  recoveryMode: String,
+
+  password: String,
+  code: String,
+
+  createdAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', userSchema);
+
+/* =========================
+   ➕ POST /users
+========================= */
+app.post('/users', async (req, res) => {
+  try {
+    console.log('📥 DATA REÇUE:', req.body);
+
+    const {
+      senderFirstName,
+      senderLastName,
+      senderPhone,
+      originLocation,
+      amount,
+      fees,
+      feePercent,
+      receiverFirstName,
+      receiverLastName,
+      receiverPhone,
+      destinationLocation,
+      recoveryAmount,
+      recoveryMode,
+      password
+    } = req.body;
+
+    if (
+      !senderFirstName || !senderLastName || !senderPhone ||
+      !originLocation || !destinationLocation ||
+      !receiverFirstName || !receiverLastName || !receiverPhone ||
+      !password
+    ) {
+      return res.status(400).json({ message: 'Champs manquants' });
+    }
+
+    // Code
+    const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    const number = Math.floor(100 + Math.random() * 900);
+    const code = letter + number;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      senderFirstName,
+      senderLastName,
+      senderPhone,
+      originLocation,
+      amount,
+      fees,
+      feePercent,
+      receiverFirstName,
+      receiverLastName,
+      receiverPhone,
+      destinationLocation,
+      recoveryAmount,
+      recoveryMode,
+      password: hashedPassword,
+      code
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      message: '✅ Transfert enregistré',
+      code
+    });
+
+  } catch (err) {
+    console.error('❌ ERREUR:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+/* =========================
+   📄 JSON
+========================= */
+app.get('/users/json', async (req, res) => {
   const users = await User.find({}, { password: 0 });
+  res.json(users);
+});
 
-  let html = `
-  <!DOCTYPE html>
-  <html lang="fr">
-  <head>
-  <meta charset="UTF-8">
-  <title>Liste des transferts</title>
-  <style>
-    body { font-family: Arial; background:#f4f4f4; }
-    table { width:98%; margin:30px auto; border-collapse:collapse; background:#fff; }
-    th, td { border:1px solid #ccc; padding:8px; font-size:13px; text-align:center; }
-    th { background:#007bff; color:#fff; }
-    .exp { background:#e9f1ff; }       /* bleu clair pour expéditeur */
-    .dest { background:#ffd6d6; }      /* rose clair pour destinataire */
-  </style>
-  </head>
-  <body>
-  <h2 style="text-align:center;">📋 Liste des transferts</h2>
-
-  <table>
-  <tr>
-    <th colspan="7" class="exp">EXPÉDITEUR</th>
-    <th colspan="6" class="dest">DESTINATAIRE</th>
-    <th>Date</th>
-  </tr>
-  <tr>
-    <th>Prénom</th><th>Nom</th><th>Tél</th><th>Pays départ</th><th>Montant</th><th>Frais</th><th>Code</th>
-    <th>Prénom</th><th>Nom</th><th>Tél</th><th>Pays destination</th><th>Montant reçu</th><th>Mode</th>
-    <th></th>
-  </tr>`;
-
-  users.forEach(u => {
-    html += `
-    <tr>
-      <td>${u.senderFirstName}</td>
-      <td>${u.senderLastName}</td>
-      <td>${u.senderPhone}</td>
-      <td>${u.originLocation}</td>
-      <td>${u.amount}</td>
-      <td>${u.fees}</td>
-      <td>${u.code}</td>
-
-      <td>${u.receiverFirstName}</td>
-      <td>${u.receiverLastName}</td>
-      <td>${u.receiverPhone}</td>
-      <td>${u.destinationLocation}</td>
-      <td>${u.recoveryAmount}</td>
-      <td>${u.recoveryMode}</td>
-
-      <td>${new Date(u.createdAt).toLocaleString()}</td>
-    </tr>`;
-  });
-
-  html += `</table></body></html>`;
-  res.send(html);
+/* =========================
+   🚀 SERVEUR
+========================= */
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('🚀 Serveur démarré sur le port', PORT);
 });

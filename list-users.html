@@ -18,42 +18,12 @@ body {
   background: linear-gradient(120deg, #eef2ff, #f8fafc);
   margin: 0;
   padding: 20px;
-  color: var(--text);
 }
 
 h2 {
   text-align: center;
-  margin: 20px 0 30px;
   color: var(--primary);
-}
-
-/* ===== TOTALS ===== */
-.totals {
-  display: flex;
-  gap: 20px;
-  max-width: 1400px;
-  margin: 0 auto 30px;
-}
-
-.card {
-  flex: 1;
-  background: white;
-  padding: 22px;
-  border-radius: 14px;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-}
-
-.card span {
-  display: block;
-  font-size: 13px;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
-
-.card strong {
-  font-size: 26px;
-  color: var(--primary);
+  margin-bottom: 20px;
 }
 
 /* ===== TABLE ===== */
@@ -61,60 +31,44 @@ table {
   width: 100%;
   max-width: 1400px;
   margin: auto;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
   background: white;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
 th, td {
-  padding: 12px 10px;
+  padding: 10px;
   font-size: 13px;
   text-align: center;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 thead th {
   background: var(--primary);
   color: white;
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.05em;
 }
 
 .group-exp {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  background: #6366f1;
 }
 
 .group-dest {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-}
-
-thead tr:nth-child(2) th {
-  background: #f1f5f9;
-  color: var(--muted);
+  background: #16a34a;
 }
 
 tbody tr:nth-child(even) {
   background: #f9fafb;
 }
 
-tbody tr:hover {
-  background: #eef2ff;
-}
-
-td {
-  border-bottom: 1px solid #e5e7eb;
-}
-
 .amount {
-  font-weight: 600;
+  font-weight: bold;
 }
 
 .code {
-  font-weight: bold;
   color: var(--primary);
+  font-weight: bold;
 }
 
 .date {
@@ -122,45 +76,55 @@ td {
   color: var(--muted);
 }
 
-.loading,
-.error {
-  text-align: center;
-  font-weight: bold;
-  padding: 20px;
+/* ===== TOTAL FORM ===== */
+.total-form {
+  max-width: 900px;
+  margin: 40px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
-.error {
-  color: #dc2626;
+.total-form h3 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--success);
+}
+
+.total-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.total-grid label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.total-grid input {
+  width: 100%;
+  padding: 12px;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
 }
 </style>
 </head>
 
 <body>
 
-<h2>💸 Tableau des transferts</h2>
+<h2>💸 Liste des transferts</h2>
 
-<!-- ===== TOTAUX ===== -->
-<div class="totals">
-  <div class="card">
-    <span>Total envoyé</span>
-    <strong id="totalAmount">0</strong>
-  </div>
-  <div class="card">
-    <span>Total frais</span>
-    <strong id="totalFees">0</strong>
-  </div>
-  <div class="card">
-    <span>Total reçu</span>
-    <strong id="totalReceived">0</strong>
-  </div>
-</div>
-
-<!-- ===== TABLE ===== -->
 <table>
 <thead>
 <tr>
-  <th colspan="7" class="group-exp">📤 Expéditeur</th>
-  <th colspan="7" class="group-dest">📥 Destinataire</th>
+  <th colspan="7" class="group-exp">EXPÉDITEUR</th>
+  <th colspan="7" class="group-dest">DESTINATAIRE</th>
 </tr>
 <tr>
   <th>Prénom</th>
@@ -183,10 +147,32 @@ td {
 
 <tbody id="usersTable">
 <tr>
-  <td colspan="14" class="loading">Chargement...</td>
+  <td colspan="14">Chargement...</td>
 </tr>
 </tbody>
 </table>
+
+<!-- ===== FORMULAIRE DES TOTAUX ===== -->
+<div class="total-form">
+  <h3>📊 Totaux généraux</h3>
+
+  <div class="total-grid">
+    <div>
+      <label>Total montants envoyés</label>
+      <input id="totalAmount" readonly value="0">
+    </div>
+
+    <div>
+      <label>Total frais</label>
+      <input id="totalFees" readonly value="0">
+    </div>
+
+    <div>
+      <label>Total montants reçus</label>
+      <input id="totalReceived" readonly value="0">
+    </div>
+  </div>
+</div>
 
 <script>
 async function loadUsers() {
@@ -201,18 +187,22 @@ async function loadUsers() {
     let totalFees = 0;
     let totalReceived = 0;
 
-    if (!users.length) {
+    if (!Array.isArray(users) || users.length === 0) {
       table.innerHTML = `
         <tr>
-          <td colspan="14" class="loading">Aucun transfert trouvé</td>
+          <td colspan="14">Aucun transfert trouvé</td>
         </tr>`;
       return;
     }
 
     users.forEach(user => {
-      totalAmount += Number(user.amount) || 0;
-      totalFees += Number(user.fees) || 0;
-      totalReceived += Number(user.recoveryAmount) || 0;
+      const amount = Number(user.amount) || 0;
+      const fees = Number(user.fees) || 0;
+      const received = Number(user.recoveryAmount) || 0;
+
+      totalAmount += amount;
+      totalFees += fees;
+      totalReceived += received;
 
       const row = document.createElement('tr');
       row.innerHTML = `
@@ -220,34 +210,35 @@ async function loadUsers() {
         <td>${user.senderLastName}</td>
         <td>${user.senderPhone}</td>
         <td>${user.originLocation}</td>
-        <td class="amount">${user.amount}</td>
-        <td>${user.fees}</td>
+        <td class="amount">${amount}</td>
+        <td>${fees}</td>
         <td class="code">${user.code}</td>
 
         <td>${user.receiverFirstName}</td>
         <td>${user.receiverLastName}</td>
         <td>${user.receiverPhone}</td>
         <td>${user.destinationLocation}</td>
-        <td class="amount">${user.recoveryAmount}</td>
+        <td class="amount">${received}</td>
         <td>${user.recoveryMode}</td>
         <td class="date">${new Date(user.createdAt).toLocaleString()}</td>
       `;
       table.appendChild(row);
     });
 
-    document.getElementById('totalAmount').innerText =
+    // 🔥 AFFICHAGE DES TOTAUX DANS LE FORMULAIRE
+    document.getElementById('totalAmount').value =
       totalAmount.toLocaleString();
 
-    document.getElementById('totalFees').innerText =
+    document.getElementById('totalFees').value =
       totalFees.toLocaleString();
 
-    document.getElementById('totalReceived').innerText =
+    document.getElementById('totalReceived').value =
       totalReceived.toLocaleString();
 
   } catch (err) {
     document.getElementById('usersTable').innerHTML = `
       <tr>
-        <td colspan="14" class="error">Erreur lors du chargement des données</td>
+        <td colspan="14" style="color:red;">Erreur serveur</td>
       </tr>`;
   }
 }

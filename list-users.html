@@ -7,9 +7,7 @@
 <style>
 :root {
   --primary: #4f46e5;
-  --primary-light: #eef2ff;
   --success: #16a34a;
-  --success-light: #ecfdf5;
   --bg: #f8fafc;
   --text: #1f2937;
   --muted: #6b7280;
@@ -26,18 +24,47 @@ body {
 h2 {
   text-align: center;
   margin: 20px 0 30px;
-  font-weight: 600;
   color: var(--primary);
 }
 
+/* ===== TOTALS ===== */
+.totals {
+  display: flex;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto 30px;
+}
+
+.card {
+  flex: 1;
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.card span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.card strong {
+  font-size: 26px;
+  color: var(--primary);
+}
+
+/* ===== TABLE ===== */
 table {
-  border-collapse: separate;
-  border-spacing: 0;
   width: 100%;
   max-width: 1400px;
   margin: auto;
+  border-collapse: separate;
+  border-spacing: 0;
   background: white;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
@@ -48,7 +75,7 @@ th, td {
   text-align: center;
 }
 
-th {
+thead th {
   background: var(--primary);
   color: white;
   text-transform: uppercase;
@@ -58,24 +85,15 @@ th {
 
 .group-exp {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
-  color: white;
-  font-weight: 600;
 }
 
 .group-dest {
   background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: white;
-  font-weight: 600;
 }
 
 thead tr:nth-child(2) th {
   background: #f1f5f9;
   color: var(--muted);
-  font-weight: 600;
-}
-
-tbody tr {
-  transition: background 0.2s ease;
 }
 
 tbody tr:nth-child(even) {
@@ -90,13 +108,13 @@ td {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.amount {
+  font-weight: 600;
+}
+
 .code {
   font-weight: bold;
   color: var(--primary);
-}
-
-.amount {
-  font-weight: 600;
 }
 
 .date {
@@ -107,7 +125,7 @@ td {
 .loading,
 .error {
   text-align: center;
-  font-weight: 600;
+  font-weight: bold;
   padding: 20px;
 }
 
@@ -119,8 +137,25 @@ td {
 
 <body>
 
-<h2>💸 Liste des transferts</h2>
+<h2>💸 Tableau des transferts</h2>
 
+<!-- ===== TOTAUX ===== -->
+<div class="totals">
+  <div class="card">
+    <span>Total envoyé</span>
+    <strong id="totalAmount">0</strong>
+  </div>
+  <div class="card">
+    <span>Total frais</span>
+    <strong id="totalFees">0</strong>
+  </div>
+  <div class="card">
+    <span>Total reçu</span>
+    <strong id="totalReceived">0</strong>
+  </div>
+</div>
+
+<!-- ===== TABLE ===== -->
 <table>
 <thead>
 <tr>
@@ -162,6 +197,10 @@ async function loadUsers() {
     const table = document.getElementById('usersTable');
     table.innerHTML = '';
 
+    let totalAmount = 0;
+    let totalFees = 0;
+    let totalReceived = 0;
+
     if (!users.length) {
       table.innerHTML = `
         <tr>
@@ -171,8 +210,11 @@ async function loadUsers() {
     }
 
     users.forEach(user => {
-      const row = document.createElement('tr');
+      totalAmount += Number(user.amount) || 0;
+      totalFees += Number(user.fees) || 0;
+      totalReceived += Number(user.recoveryAmount) || 0;
 
+      const row = document.createElement('tr');
       row.innerHTML = `
         <td>${user.senderFirstName}</td>
         <td>${user.senderLastName}</td>
@@ -190,9 +232,17 @@ async function loadUsers() {
         <td>${user.recoveryMode}</td>
         <td class="date">${new Date(user.createdAt).toLocaleString()}</td>
       `;
-
       table.appendChild(row);
     });
+
+    document.getElementById('totalAmount').innerText =
+      totalAmount.toLocaleString();
+
+    document.getElementById('totalFees').innerText =
+      totalFees.toLocaleString();
+
+    document.getElementById('totalReceived').innerText =
+      totalReceived.toLocaleString();
 
   } catch (err) {
     document.getElementById('usersTable').innerHTML = `

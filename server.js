@@ -11,9 +11,15 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // Afficher le formulaire HTML
-app.get('/users/all', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'users-all.html'));
+app.get('/users', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'users.html'));
 });
+
+// Afficher le formulaire HTML
+app.get('/users/all', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'list-users.html'));
+});
+
 
 
 // Connexion MongoDB

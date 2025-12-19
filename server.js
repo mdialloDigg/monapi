@@ -51,7 +51,7 @@ const User = mongoose.model('User', userSchema);
 // POST /users → créer une transaction
 app.post('/users', async (req, res) => {
   try {
-    let {
+    const {
       senderFirstName,
       senderLastName,
       password,
@@ -68,22 +68,24 @@ app.post('/users', async (req, res) => {
       recoveryMode
     } = req.body;
 
-    // Conversion en Number
-    amount = Number(amount);
-    fees = Number(fees);
-    feePercent = Number(feePercent);
-    recoveryAmount = Number(recoveryAmount);
+    console.log('BODY RECU:', req.body);
 
     // Validation
     if (
       !senderFirstName || !senderLastName || !password ||
       !senderPhone || !originLocation ||
-      isNaN(amount) || isNaN(fees) || isNaN(feePercent) ||
+      !amount || !fees || !feePercent ||
       !receiverFirstName || !receiverLastName || !receiverPhone ||
-      !destinationLocation || isNaN(recoveryAmount) || !recoveryMode
+      !destinationLocation || !recoveryAmount || !recoveryMode
     ) {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
+
+    // Convertir en nombres si nécessaire
+    const amt = Number(amount);
+    const fee = Number(fees);
+    const feeP = Number(feePercent);
+    const recoveryAmt = Number(recoveryAmount);
 
     // Générer un code aléatoire (A123)
     const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
@@ -98,14 +100,14 @@ app.post('/users', async (req, res) => {
       senderLastName,
       senderPhone,
       originLocation,
-      amount,
-      fees,
-      feePercent,
+      amount: amt,
+      fees: fee,
+      feePercent: feeP,
       receiverFirstName,
       receiverLastName,
       receiverPhone,
       destinationLocation,
-      recoveryAmount,
+      recoveryAmount: recoveryAmt,
       recoveryMode,
       password: hashedPassword,
       code
@@ -116,8 +118,8 @@ app.post('/users', async (req, res) => {
     res.status(201).json({ message: '✅ Transfert enregistré avec succès', code });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('ERROR POST /users:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
 

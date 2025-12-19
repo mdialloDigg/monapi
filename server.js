@@ -1,3 +1,4 @@
+// server.js
 const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
@@ -5,35 +6,25 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 
 const app = express();
-
-/* =========================
-   MIDDLEWARES
-========================= */
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-/* =========================
-   PAGE FORMULAIRE
-========================= */
+// Afficher le formulaire HTML
 app.get('/users', (req, res) => {
   res.sendFile(path.join(__dirname, 'users.html'));
 });
 
-/* =========================
-   CONNEXION MONGODB
-========================= */
+// Connexion MongoDB
 mongoose.connect(
-  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
+  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test',
+  { useNewUrlParser: true, useUnifiedTopology: true }
 )
 .then(() => console.log('✅ MongoDB connecté'))
 .catch(err => console.error('❌ MongoDB erreur:', err));
 
-/* =========================
-   SCHÉMA USER
-========================= */
+// Modèle User
 const userSchema = new mongoose.Schema({
-  // Expéditeur
   senderFirstName: { type: String, required: true },
   senderLastName: { type: String, required: true },
   senderPhone: { type: String, required: true },
@@ -42,7 +33,6 @@ const userSchema = new mongoose.Schema({
   fees: { type: Number, required: true },
   feePercent: { type: Number, required: true },
 
-  // Destinataire
   receiverFirstName: { type: String, required: true },
   receiverLastName: { type: String, required: true },
   receiverPhone: { type: String, required: true },
@@ -50,7 +40,6 @@ const userSchema = new mongoose.Schema({
   recoveryAmount: { type: Number, required: true },
   recoveryMode: { type: String, required: true },
 
-  // Sécurité
   password: { type: String, required: true },
   code: { type: String, required: true, unique: true },
 
@@ -59,13 +48,9 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-/* =========================
-   POST /users
-========================= */
+// POST /users → créer une transaction
 app.post('/users', async (req, res) => {
   try {
-    console.log('📥 Données reçues:', req.body);
-
     const {
       senderFirstName,
       senderLastName,
@@ -83,6 +68,7 @@ app.post('/users', async (req, res) => {
       recoveryMode
     } = req.body;
 
+    // Validation
     if (
       !senderFirstName || !senderLastName || !password ||
       !senderPhone || !originLocation ||
@@ -93,14 +79,13 @@ app.post('/users', async (req, res) => {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    // Génération du code
+    // Générer un code aléatoire (A123)
     const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
     const number = Math.floor(100 + Math.random() * 900);
     const code = letter + number;
 
+    // Hash du mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    console.log('⏳ Sauvegarde MongoDB...');
 
     const user = new User({
       senderFirstName,
@@ -122,94 +107,89 @@ app.post('/users', async (req, res) => {
 
     await user.save();
 
-    console.log('✅ Sauvegarde réussie');
-
-    res.json({
-      message: '✅ Transfert enregistré avec succès',
-      code
-    });
+    res.status(201).json({ message: '✅ Transfert enregistré avec succès', code });
 
   } catch (err) {
-    console.error('❌ ERREUR SERVEUR:', err);
+    console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-/* =========================
-   JSON DES TRANSFERTS
-========================= */
+// GET /users/json → liste JSON
 app.get('/users/json', async (req, res) => {
-  const users = await User.find({}, { password: 0 });
-  res.json(users);
+  try {
+    const users = await User.find({}, { password: 0 });
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 });
 
-/* =========================
-   PAGE LISTE HTML
-========================= */
+// GET /users/all → afficher HTML
 app.get('/users/all', async (req, res) => {
-  const users = await User.find({}, { password: 0 });
+  try {
+    const users = await User.find({}, { password: 0 });
 
-  let html = `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Liste des transferts</title>
-<style>
-  body { font-family: Arial; background:#f4f4f4; }
-  table { width:98%; margin:30px auto; border-collapse:collapse; background:#fff; }
-  th, td { border:1px solid #ccc; padding:8px; font-size:13px; text-align:center; }
-  th { background:#007bff; color:#fff; }
-  .exp { background:#e9f1ff; }
-  .dest { background:#fff3cd; }
-</style>
-</head>
-<body>
+    let html = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Liste des transferts</title>
+        <style>
+          body { font-family: Arial; background:#f4f4f4; }
+          table { width:98%; margin:30px auto; border-collapse:collapse; background:#fff; }
+          th, td { border:1px solid #ccc; padding:8px; font-size:13px; text-align:center; }
+          th { background:#007bff; color:#fff; }
+          .exp { background:#e9f1ff; }
+          .dest { background:#ffdede; } /* changer couleur pour destination */
+        </style>
+      </head>
+      <body>
+        <h2 style="text-align:center;">📋 Liste des transferts</h2>
+        <table>
+          <tr>
+            <th colspan="7" class="exp">EXPÉDITEUR</th>
+            <th colspan="6" class="dest">DESTINATAIRE</th>
+            <th>Date</th>
+          </tr>
+          <tr>
+            <th>Prénom</th><th>Nom</th><th>Tél</th><th>Pays départ</th><th>Montant</th><th>Frais</th><th>Code</th>
+            <th>Prénom</th><th>Nom</th><th>Tél</th><th>Pays destination</th><th>Montant reçu</th><th>Mode</th>
+            <th></th>
+          </tr>`;
 
-<h2 style="text-align:center;">📋 Liste des transferts</h2>
+    users.forEach(u => {
+      html += `
+        <tr>
+          <td>${u.senderFirstName}</td>
+          <td>${u.senderLastName}</td>
+          <td>${u.senderPhone}</td>
+          <td>${u.originLocation}</td>
+          <td>${u.amount}</td>
+          <td>${u.fees}</td>
+          <td>${u.code}</td>
 
-<table>
-<tr>
-  <th colspan="7" class="exp">EXPÉDITEUR</th>
-  <th colspan="6" class="dest">DESTINATAIRE</th>
-  <th>Date</th>
-</tr>
-<tr>
-  <th>Prénom</th><th>Nom</th><th>Tél</th><th>Origine</th><th>Montant</th><th>Frais</th><th>Code</th>
-  <th>Prénom</th><th>Nom</th><th>Tél</th><th>Destination</th><th>Reçu</th><th>Mode</th>
-  <th></th>
-</tr>
-`;
+          <td>${u.receiverFirstName}</td>
+          <td>${u.receiverLastName}</td>
+          <td>${u.receiverPhone}</td>
+          <td>${u.destinationLocation}</td>
+          <td>${u.recoveryAmount}</td>
+          <td>${u.recoveryMode}</td>
 
-  users.forEach(u => {
-    html += `
-<tr>
-  <td>${u.senderFirstName}</td>
-  <td>${u.senderLastName}</td>
-  <td>${u.senderPhone}</td>
-  <td>${u.originLocation}</td>
-  <td>${u.amount}</td>
-  <td>${u.fees}</td>
-  <td>${u.code}</td>
+          <td>${new Date(u.createdAt).toLocaleString()}</td>
+        </tr>`;
+    });
 
-  <td>${u.receiverFirstName}</td>
-  <td>${u.receiverLastName}</td>
-  <td>${u.receiverPhone}</td>
-  <td>${u.destinationLocation}</td>
-  <td>${u.recoveryAmount}</td>
-  <td>${u.recoveryMode}</td>
+    html += `</table></body></html>`;
+    res.send(html);
 
-  <td>${new Date(u.createdAt).toLocaleString()}</td>
-</tr>
-`;
-  });
-
-  html += `</table></body></html>`;
-  res.send(html);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Erreur serveur');
+  }
 });
 
-/* =========================
-   SERVEUR
-========================= */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('🚀 Serveur en ligne sur le port', PORT));

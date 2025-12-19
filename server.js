@@ -15,10 +15,6 @@ app.get('/users', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'users.html'));
 });
 
-// Afficher le formulaire HTML
-app.get('/users/all', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'list-users.html'));
-});
 
 
 

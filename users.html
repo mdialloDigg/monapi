@@ -2,173 +2,140 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Transfert – Expéditeur / Destinataire</title>
+<title>Nouveau transfert</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f2f2f2;
-    }
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+}
 
-    form {
-        background: white;
-        width: 950px;
-        margin: 40px auto;
-        padding: 20px;
-        border-radius: 8px;
-    }
+form {
+  width: 500px;
+  margin: 30px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+}
 
-    h3 {
-        text-align: center;
-        margin-bottom: 20px;
-    }
+label {
+  display: block;
+  margin-top: 10px;
+  font-weight: bold;
+}
 
-    .container {
-        display: flex;
-        gap: 20px;
-    }
+input, select, button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+}
 
-    .box {
-        flex: 1;
-        border: 1px solid #ddd;
-        padding: 15px;
-        border-radius: 6px;
-        background: #fafafa;
-    }
-
-    .box h4 {
-        text-align: center;
-        margin-bottom: 15px;
-        color: #007bff;
-    }
-
-    input, button {
-        width: 100%;
-        margin-top: 10px;
-        padding: 8px;
-        box-sizing: border-box;
-    }
-
-    button {
-        margin-top: 20px;
-        background: #007bff;
-        color: white;
-        border: none;
-        cursor: pointer;
-        font-size: 16px;
-    }
-
-    #message {
-        text-align: center;
-        margin-top: 15px;
-        font-weight: bold;
-        color: green;
-    }
+button {
+  margin-top: 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
 </style>
 </head>
 
 <body>
 
-<form id="userForm">
-    <h3>Créer un transfert</h3>
+<h2 style="text-align:center;">📦 Nouveau transfert</h2>
 
-    <div class="container">
+<form id="transferForm">
 
-        <!-- ================= EXPÉDITEUR ================= -->
-        <div class="box">
-            <h4>👤 Expéditeur</h4>
+  <!-- EXPÉDITEUR -->
+  <label>Prénom expéditeur</label>
+  <input type="text" name="senderFirstName" required>
 
-            <input type="text" id="senderFirstName" placeholder="Prénom expéditeur" required />
-            <input type="text" id="senderLastName" placeholder="Nom expéditeur" required />
+  <label>Nom expéditeur</label>
+  <input type="text" name="senderLastName" required>
 
-            <input type="email" id="email" placeholder="Email expéditeur" required />
-            <input type="password" id="password" placeholder="Mot de passe" required />
+  <label>Téléphone expéditeur</label>
+  <input type="text" name="senderPhone" required>
 
-            <input type="number" id="amount" placeholder="Montant envoyé" required />
+  <!-- ORIGINE (LISTE DÉROULANTE) -->
+  <label>Lieu de départ</label>
+  <select name="originLocation" required>
+    <option value="">-- Sélectionner --</option>
+    <option value="Conakry">Conakry</option>
+    <option value="Labé">Labé</option>
+    <option value="France">France</option>
+    <option value="Belgique">Belgique</option>
+    <option value="New York">New York</option>
+    <option value="Atlanta">Atlanta</option>
+    <option value="Allemagne">Allemagne</option>
+    <option value="Dubaï">Dubaï</option>
+    <option value="Chine">Chine</option>
+  </select>
 
-            <input type="tel" id="senderPhone" placeholder="Téléphone expéditeur" required />
+  <label>Montant envoyé</label>
+  <input type="number" name="amount" required>
 
-            <input type="text" id="originLocation" placeholder="Pays de départ" required />
+  <label>Frais</label>
+  <input type="number" name="fees" required>
 
-            <input type="number" id="fees" placeholder="Frais" required />
-            <input type="number" id="feePercent" placeholder="% de frais" required />
-        </div>
+  <label>Pourcentage frais</label>
+  <input type="number" name="feePercent" required>
 
-        <!-- ================= DESTINATAIRE ================= -->
-        <div class="box">
-            <h4>👥 Destinataire</h4>
+  <!-- DESTINATAIRE -->
+  <label>Prénom destinataire</label>
+  <input type="text" name="receiverFirstName" required>
 
-            <input type="text" id="receiverFirstName" placeholder="Prénom destinataire" required />
-            <input type="text" id="receiverLastName" placeholder="Nom destinataire" required />
+  <label>Nom destinataire</label>
+  <input type="text" name="receiverLastName" required>
 
-            <input type="tel" id="receiverPhone" placeholder="Téléphone destinataire" required />
+  <label>Téléphone destinataire</label>
+  <input type="text" name="receiverPhone" required>
 
-            <input type="text" id="destinationLocation" placeholder="Pays de destination" required />
+  <!-- DESTINATION (LISTE DÉROULANTE) -->
+  <label>Lieu de destination</label>
+  <select name="destinationLocation" required>
+    <option value="">-- Sélectionner --</option>
+    <option value="Conakry">Conakry</option>
+    <option value="Labé">Labé</option>
+    <option value="France">France</option>
+    <option value="Belgique">Belgique</option>
+    <option value="New York">New York</option>
+    <option value="Atlanta">Atlanta</option>
+    <option value="Allemagne">Allemagne</option>
+    <option value="Dubaï">Dubaï</option>
+    <option value="Chine">Chine</option>
+  </select>
 
-            <input type="number" id="recoveryAmount" placeholder="Montant à récupérer" required />
-            <input type="text" id="recoveryMode" placeholder="Mode de récupération" required />
-        </div>
+  <label>Montant reçu</label>
+  <input type="number" name="recoveryAmount" required>
 
-    </div>
+  <label>Mode de récupération</label>
+  <select name="recoveryMode" required>
+    <option value="">-- Sélectionner --</option>
+    <option value="Cash">Cash</option>
+    <option value="Mobile Money">Mobile Money</option>
+    <option value="Virement bancaire">Virement bancaire</option>
+  </select>
 
-    <button type="submit">💾 Enregistrer le transfert</button>
-    <p id="message"></p>
+  <label>Mot de passe</label>
+  <input type="password" name="password" required>
+
+  <button type="submit">💾 Enregistrer</button>
 </form>
 
 <script>
-function generateCode() {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const letter = letters[Math.floor(Math.random() * letters.length)];
-    const number = Math.floor(100 + Math.random() * 900);
-    return letter + number;
-}
+document.getElementById('transferForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
 
-document.getElementById('userForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const formData = Object.fromEntries(new FormData(e.target));
 
-    const payload = {
-        senderFirstName: document.getElementById('senderFirstName').value,
-        senderLastName: document.getElementById('senderLastName').value,
+  const res = await fetch('/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
 
-        receiverFirstName: document.getElementById('receiverFirstName').value,
-        receiverLastName: document.getElementById('receiverLastName').value,
-
-        email: document.getElementById('email').value,
-        password: document.getElementById('password').value,
-        amount: Number(document.getElementById('amount').value),
-
-        senderPhone: document.getElementById('senderPhone').value,
-        receiverPhone: document.getElementById('receiverPhone').value,
-
-        originLocation: document.getElementById('originLocation').value,
-        destinationLocation: document.getElementById('destinationLocation').value,
-
-        fees: Number(document.getElementById('fees').value),
-        feePercent: Number(document.getElementById('feePercent').value),
-
-        recoveryAmount: Number(document.getElementById('recoveryAmount').value),
-        recoveryMode: document.getElementById('recoveryMode').value,
-
-        code: generateCode()
-    };
-
-    try {
-        const res = await fetch('https://monapi-bf4o.onrender.com/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        document.getElementById('message').innerText = data.message || 'Succès';
-
-        if (res.ok) {
-            document.getElementById('userForm').reset();
-        }
-    } catch (err) {
-        console.error(err);
-        document.getElementById('message').innerText = 'Erreur serveur';
-    }
+  const data = await res.json();
+  alert(data.message || 'Transfert enregistré');
 });
 </script>
 

@@ -87,7 +87,7 @@ h2 { color:#007bff; }
 `);
   }
 
-  // FORMULAIRE INTÉGRÉ
+  // FORMULAIRE INTÉGRÉ + Bouton Déconnexion
   res.send(`
 <!DOCTYPE html>
 <html lang="fr">
@@ -104,6 +104,7 @@ form { background:#fff; width:900px; margin:40px auto; padding:20px; border-radi
 input, select, button { width:100%; padding:8px; margin-top:10px; }
 button { background:#007bff; color:white; border:none; font-size:16px; cursor:pointer; }
 #message { text-align:center; margin-top:15px; font-weight:bold; }
+#logout { background:#dc3545; margin-top:10px; }
 </style>
 </head>
 
@@ -137,6 +138,7 @@ button { background:#007bff; color:white; border:none; font-size:16px; cursor:po
 
 <input id="password" type="password" placeholder="Mot de passe" required>
 <button type="submit">💾 Enregistrer</button>
+<button id="logout" type="button" onclick="window.location.href='/logout'">Se déconnecter</button>
 <p id="message"></p>
 </form>
 
@@ -333,6 +335,18 @@ app.post('/users', async (req, res) => {
     console.error(err);
     res.status(500).json({ message: '❌ Erreur serveur' });
   }
+});
+
+/* ======================================================
+   LOGOUT
+====================================================== */
+app.get('/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      return res.status(500).send('Erreur lors de la déconnexion');
+    }
+    res.redirect('/users');
+  });
 });
 
 // Serveur

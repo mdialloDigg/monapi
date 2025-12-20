@@ -17,9 +17,36 @@ app.get('/', (req, res) => {
   res.send('🚀 API Transfert en ligne');
 });
 
-// Page formulaire
+// Formulaire sécurisé par code
 app.get('/users', (req, res) => {
-  res.sendFile(path.join(__dirname, 'users.html'));
+  const code = req.query.code;
+
+  if (code === '123') {
+    res.sendFile(path.join(__dirname, 'users.html'));
+  } else {
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Accès au formulaire</title>
+        <style>
+          body { font-family: Arial; text-align:center; padding-top:50px; background:#f4f6f9; }
+          input { padding:8px; font-size:16px; }
+          button { padding:8px 12px; font-size:16px; }
+          h2 { margin-bottom:20px; color:#007bff; }
+        </style>
+      </head>
+      <body>
+        <h2>🔒 Entrez le code pour accéder au formulaire</h2>
+        <form method="get" action="/users">
+          <input type="password" name="code" placeholder="Code">
+          <button type="submit">Valider</button>
+        </form>
+      </body>
+      </html>
+    `);
+  }
 });
 
 // Connexion MongoDB

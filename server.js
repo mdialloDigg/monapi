@@ -17,10 +17,9 @@ app.get('/', (req, res) => {
   res.send('🚀 API Transfert en ligne');
 });
 
-// Formulaire sécurisé par code
+// Formulaire sécurisé par code 123
 app.get('/users', (req, res) => {
   const code = req.query.code;
-
   if (code === '123') {
     res.sendFile(path.join(__dirname, 'users.html'));
   } else {
@@ -141,8 +140,36 @@ app.get('/users/json', async (req, res) => {
   }
 });
 
-// GET /users/all → HTML avec totaux & style
+// GET /users/all → HTML sécurisé par code 147
 app.get('/users/all', async (req, res) => {
+  const code = req.query.code;
+
+  if (code !== '147') {
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>Accès liste des transferts</title>
+        <style>
+          body { font-family: Arial; text-align:center; padding-top:50px; background:#f4f6f9; }
+          input { padding:8px; font-size:16px; }
+          button { padding:8px 12px; font-size:16px; }
+          h2 { margin-bottom:20px; color:#28a745; }
+        </style>
+      </head>
+      <body>
+        <h2>🔒 Entrez le code pour accéder à la liste des transferts</h2>
+        <form method="get" action="/users/all">
+          <input type="password" name="code" placeholder="Code">
+          <button type="submit">Valider</button>
+        </form>
+      </body>
+      </html>
+    `);
+    return;
+  }
+
   try {
     const users = await User.find({}, { password: 0, __v: 0 });
 

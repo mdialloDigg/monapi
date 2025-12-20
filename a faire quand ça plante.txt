@@ -14,6 +14,8 @@ Remove-Item -Force package-lock.json
 npm install
 node server.js
 
+npm install express-session
+
 ----
 dans Postman
 

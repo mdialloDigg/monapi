@@ -23,7 +23,36 @@ app.use(
   })
 );
 
-// Route racine
+// MongoDB connection
+mongoose.connect(
+  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
+)
+.then(() => console.log('✅ MongoDB connecté'))
+.catch(err => console.error(err));
+
+// Schema Mongoose
+const userSchema = new mongoose.Schema({
+  senderFirstName: String,
+  senderLastName: String,
+  senderPhone: String,
+  originLocation: String,
+  amount: Number,
+  fees: Number,
+  feePercent: Number,
+  receiverFirstName: String,
+  receiverLastName: String,
+  receiverPhone: String,
+  destinationLocation: String,
+  recoveryAmount: Number,
+  recoveryMode: String,
+  password: String,
+  code: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', userSchema);
+
+// ROUTE RACINE
 app.get('/', (req, res) => {
   res.send('🚀 API Transfert en ligne');
 });
@@ -32,13 +61,9 @@ app.get('/', (req, res) => {
    🔐 ACCÈS FORMULAIRE /users (CODE 123)
 ====================================================== */
 
-// Page formulaire ou demande de code
 app.get('/users', (req, res) => {
-  if (req.session.formAccess === true) {
-    return res.sendFile(path.join(__dirname, 'users.html'));
-  }
-
-  res.send(`
+  if (!req.session.formAccess) {
+    return res.send(`
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -57,6 +82,97 @@ h2 { color:#007bff; }
   <br><br>
   <button type="submit">Valider</button>
 </form>
+</body>
+</html>
+`);
+  }
+
+  // FORMULAIRE INTÉGRÉ
+  res.send(`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Créer un transfert</title>
+<style>
+body { font-family: Arial; background:#f2f2f2; }
+form { background:#fff; width:900px; margin:40px auto; padding:20px; border-radius:8px; }
+.container { display:flex; gap:20px; }
+.box { flex:1; padding:15px; border-radius:6px; }
+.origin { background:#e9f1ff; }
+.dest { background:#ffdede; }
+input, select, button { width:100%; padding:8px; margin-top:10px; }
+button { background:#007bff; color:white; border:none; font-size:16px; cursor:pointer; }
+#message { text-align:center; margin-top:15px; font-weight:bold; }
+</style>
+</head>
+
+<body>
+
+<form id="form">
+<h3>💸 Créer un transfert</h3>
+
+<div class="container">
+  <div class="box origin">
+    <h4>📤 Origine</h4>
+    <input id="senderFirstName" placeholder="Prénom expéditeur" required>
+    <input id="senderLastName" placeholder="Nom expéditeur" required>
+    <input id="senderPhone" placeholder="Téléphone expéditeur" required>
+    <input id="originLocation" placeholder="Origine" required>
+    <input id="amount" type="number" placeholder="Montant" required>
+    <input id="fees" type="number" placeholder="Frais" required>
+    <input id="feePercent" type="number" placeholder="% Frais" required>
+  </div>
+
+  <div class="box dest">
+    <h4>📥 Destination</h4>
+    <input id="receiverFirstName" placeholder="Prénom destinataire" required>
+    <input id="receiverLastName" placeholder="Nom destinataire" required>
+    <input id="receiverPhone" placeholder="Téléphone destinataire" required>
+    <input id="destinationLocation" placeholder="Destination" required>
+    <input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
+    <input id="recoveryMode" placeholder="Mode de récupération" required>
+  </div>
+</div>
+
+<input id="password" type="password" placeholder="Mot de passe" required>
+<button type="submit">💾 Enregistrer</button>
+<p id="message"></p>
+</form>
+
+<script>
+document.getElementById('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const payload = {
+    senderFirstName: senderFirstName.value,
+    senderLastName: senderLastName.value,
+    senderPhone: senderPhone.value,
+    originLocation: originLocation.value,
+    amount: Number(amount.value),
+    fees: Number(fees.value),
+    feePercent: Number(feePercent.value),
+    receiverFirstName: receiverFirstName.value,
+    receiverLastName: receiverLastName.value,
+    receiverPhone: receiverPhone.value,
+    destinationLocation: destinationLocation.value,
+    recoveryAmount: Number(recoveryAmount.value),
+    recoveryMode: recoveryMode.value,
+    password: password.value
+  };
+
+  const res = await fetch('/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  message.style.color = res.ok ? 'green' : 'red';
+  message.innerText = data.message + (data.code ? ' | Code: ' + data.code : '');
+  if (res.ok) form.reset();
+});
+</script>
+
 </body>
 </html>
 `);
@@ -155,14 +271,12 @@ th { background:#007bff; color:#fff; }
 <td>${u.amount}</td>
 <td>${u.fees}</td>
 <td>${u.code}</td>
-
 <td>${u.receiverFirstName}</td>
 <td>${u.receiverLastName}</td>
 <td>${u.receiverPhone}</td>
 <td class="destination">${u.destinationLocation}</td>
 <td>${u.recoveryAmount}</td>
 <td>${u.recoveryMode}</td>
-
 <td>${new Date(u.createdAt).toLocaleString()}</td>
 </tr>`;
     });
@@ -180,7 +294,6 @@ th { background:#007bff; color:#fff; }
 </html>`;
 
     res.send(html);
-
   } catch (err) {
     res.status(500).send('Erreur serveur');
   }
@@ -196,35 +309,31 @@ app.post('/auth/list', (req, res) => {
 });
 
 /* ======================================================
-   MongoDB + API
+   POST /users : ENREGISTRER UN TRANSFERT
 ====================================================== */
+app.post('/users', async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-mongoose.connect(
-  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
-)
-.then(() => console.log('✅ MongoDB connecté'))
-.catch(err => console.error(err));
+    const user = new User({
+      ...req.body,
+      password: hashedPassword,
+      code
+    });
 
-const userSchema = new mongoose.Schema({
-  senderFirstName: String,
-  senderLastName: String,
-  senderPhone: String,
-  originLocation: String,
-  amount: Number,
-  fees: Number,
-  feePercent: Number,
-  receiverFirstName: String,
-  receiverLastName: String,
-  receiverPhone: String,
-  destinationLocation: String,
-  recoveryAmount: Number,
-  recoveryMode: String,
-  password: String,
-  code: String,
-  createdAt: { type: Date, default: Date.now }
+    await user.save();
+
+    res.json({
+      message: '✅ Transfert enregistré avec succès',
+      code
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: '❌ Erreur serveur' });
+  }
 });
-
-const User = mongoose.model('User', userSchema);
 
 // Serveur
 const PORT = process.env.PORT || 3000;

@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
-const axios = require('axios');
 
 const app = express();
 
@@ -12,16 +11,20 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(session({
-  secret: 'super-secret-transfert-key',
-  resave: false,
-  saveUninitialized: false
-}));
+app.use(
+  session({
+    secret: 'super-secret-transfert-key',
+    resave: false,
+    saveUninitialized: false
+  })
+);
 
 /* ================= MONGODB ================= */
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(
+  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
+)
 .then(() => console.log('✅ MongoDB connecté'))
-.catch(console.error);
+.catch(err => console.error(err));
 
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
@@ -34,7 +37,7 @@ const userSchema = new mongoose.Schema({
 
   receiverFirstName: String,
   receiverLastName: String,
-  receiverPhone: String, // NUMÉRO ORANGE MONEY
+  receiverPhone: String,
   destinationLocation: String,
   recoveryAmount: Number,
   recoveryMode: String,
@@ -46,95 +49,173 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-/* ================= ORANGE MONEY AUTH ================= */
-async function getOrangeToken() {
-  const auth = Buffer.from(
-    process.env.ORANGE_CLIENT_ID + ':' + process.env.ORANGE_CLIENT_SECRET
-  ).toString('base64');
+/* ======================================================
+   🔐 FORMULAIRE DE SAISIE
+====================================================== */
+app.get('/users', (req, res) => {
+  if (!req.session.formAccess) {
+    return res.send(`
+      <h2 style="text-align:center;margin-top:60px">🔒 Accès formulaire</h2>
+      <form method="post" action="/auth/form" style="text-align:center">
+        <input type="password" name="code" placeholder="Code d'accès" required>
+        <br><br>
+        <button>Valider</button>
+      </form>
+    `);
+  }
 
-  const res = await axios.post(
-    `${process.env.ORANGE_API_BASE}/oauth/v3/token`,
-    'grant_type=client_credentials',
-    {
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    }
-  );
+  res.send(`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Créer un transfert</title>
+<style>
+body{font-family:Arial;background:#f2f2f2}
+form{background:#fff;width:900px;margin:40px auto;padding:20px;border-radius:8px}
+.container{display:flex;gap:20px}
+.box{flex:1;padding:15px;border-radius:6px}
+.origin{background:#e9f1ff}
+.dest{background:#ffdede}
+input,button{width:100%;padding:8px;margin-top:8px}
+#save{background:#007bff;color:#fff}
+#print{background:#28a745;color:#fff}
+#logout{background:#dc3545;color:#fff}
+</style>
+</head>
+<body>
 
-  return res.data.access_token;
+<form id="form">
+<h3 style="text-align:center">💸 Créer un transfert</h3>
+
+<div class="container">
+<div class="box origin">
+<input id="senderFirstName" placeholder="Prénom expéditeur" required>
+<input id="senderLastName" placeholder="Nom expéditeur" required>
+<input id="senderPhone" placeholder="Téléphone expéditeur" required>
+<input id="originLocation" placeholder="Origine" required>
+<input id="amount" type="number" placeholder="Montant" required>
+<input id="fees" type="number" placeholder="Frais" required>
+<input id="feePercent" type="number" placeholder="% Frais" required>
+</div>
+
+<div class="box dest">
+<input id="receiverFirstName" placeholder="Prénom destinataire" required>
+<input id="receiverLastName" placeholder="Nom destinataire" required>
+<input id="receiverPhone" placeholder="Téléphone destinataire" required>
+<input id="destinationLocation" placeholder="Destination" required>
+<input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
+<input id="recoveryMode" placeholder="Mode récupération" required>
+</div>
+</div>
+
+<input id="password" type="password" placeholder="Mot de passe" required>
+
+<button id="save">💾 Enregistrer</button>
+<button id="print" type="button" onclick="printReceipt()">🖨 Imprimer</button>
+<button id="logout" type="button" onclick="location.href='/logout/form'">🚪 Se déconnecter</button>
+
+<p id="message"></p>
+</form>
+
+<script>
+let lastCode = '';
+
+form.onsubmit = async e => {
+  e.preventDefault();
+  const res = await fetch('/users', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      senderFirstName: senderFirstName.value,
+      senderLastName: senderLastName.value,
+      senderPhone: senderPhone.value,
+      originLocation: originLocation.value,
+      amount:+amount.value,
+      fees:+fees.value,
+      feePercent:+feePercent.value,
+      receiverFirstName: receiverFirstName.value,
+      receiverLastName: receiverLastName.value,
+      receiverPhone: receiverPhone.value,
+      destinationLocation: destinationLocation.value,
+      recoveryAmount:+recoveryAmount.value,
+      recoveryMode: recoveryMode.value,
+      password: password.value
+    })
+  });
+  const data = await res.json();
+  message.innerText = data.message + ' | Code : ' + data.code;
+  lastCode = data.code;
+};
+
+function printReceipt(){
+  if(!lastCode) return alert("Enregistrez d'abord");
+  const w = window.open('');
+  w.document.write('<h3>Reçu</h3><p>Code:'+lastCode+'</p><p>Destination:'+destinationLocation.value+'</p>');
+  w.print();
 }
-
-/* ================= ENVOI ORANGE MONEY ================= */
-app.post('/orange-money/send', async (req, res) => {
-  try {
-    const { phone, amount, reference } = req.body;
-
-    if (!process.env.ORANGE_CLIENT_ID) {
-      return res.status(503).json({
-        message: 'Orange Money API non configurée'
-      });
-    }
-
-    const token = await getOrangeToken();
-
-    const response = await axios.post(
-      `${process.env.ORANGE_API_BASE}/orange-money-webpay/dev/v1/webpayment`,
-      {
-        merchant_key: process.env.ORANGE_MERCHANT_NUMBER,
-        amount,
-        currency: 'XOF',
-        order_id: reference,
-        return_url: 'https://tonsite.com/success',
-        cancel_url: 'https://tonsite.com/cancel',
-        notif_url: 'https://tonsite.com/notify'
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    );
-
-    res.json({
-      message: '✅ Transfert Orange Money initié',
-      data: response.data
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      message: '❌ Erreur Orange Money',
-      error: err.response?.data || err.message
-    });
-  }
+</script>
+</body>
+</html>
+`);
 });
 
-/* ================= SAVE TRANSFERT ================= */
-app.post('/users', async (req, res) => {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const hash = await bcrypt.hash(req.body.password, 10);
+/* ================= AUTH FORM ================= */
+app.post('/auth/form',(req,res)=>{
+  if(req.body.code==='123') req.session.formAccess = true;
+  res.redirect('/users');
+});
 
-  const transfert = await new User({
-    ...req.body,
-    password: hash,
-    code
-  }).save();
+/* ================= SAVE ================= */
+app.post('/users', async (req,res)=>{
+  const code = Math.floor(100000+Math.random()*900000).toString();
+  const hash = await bcrypt.hash(req.body.password,10);
+  await new User({...req.body,password:hash,code}).save();
+  res.json({message:'✅ Transfert enregistré',code});
+});
 
-  // 👉 SI MODE ORANGE MONEY
-  if (req.body.recoveryMode === 'Orange Money') {
-    await axios.post(`${req.protocol}://${req.get('host')}/orange-money/send`, {
-      phone: req.body.receiverPhone,
-      amount: req.body.recoveryAmount,
-      reference: code
-    });
+/* ======================================================
+   📋 LISTE DES TRANSFERTS
+====================================================== */
+app.get('/users/all', async (req,res)=>{
+  if(!req.session.listAccess){
+    return res.send(`
+      <h2 style="text-align:center;margin-top:60px">🔒 Accès liste</h2>
+      <form method="post" action="/auth/list" style="text-align:center">
+        <input type="password" name="code" placeholder="Code d'accès" required>
+        <br><br>
+        <button>Valider</button>
+      </form>
+    `);
   }
 
-  res.json({ message: '✅ Transfert enregistré', code });
+  const users = await User.find({}, {password:0});
+  let html = '<h2>📋 Liste des transferts</h2>';
+  html += '<a href="/logout/list">🚪 Se déconnecter</a><table border="1" width="100%">';
+  users.forEach(u=>{
+    html+=`<tr><td>${u.code}</td><td>${u.receiverFirstName}</td><td>${u.destinationLocation}</td></tr>`;
+  });
+  html+='</table>';
+  res.send(html);
 });
-    
+
+/* ================= AUTH LIST ================= */
+app.post('/auth/list',(req,res)=>{
+  if(req.body.code==='147') req.session.listAccess = true;
+  res.redirect('/users/all');
+});
+
+/* ================= LOGOUT CONTEXTUEL ================= */
+app.get('/logout/form',(req,res)=>{
+  req.session.formAccess = false;
+  res.redirect('/users');
+});
+
+app.get('/logout/list',(req,res)=>{
+  req.session.listAccess = false;
+  res.redirect('/users/all');
+});
+
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log('🚀 Serveur démarré sur le port', PORT)
-);
+app.listen(PORT,()=>console.log('🚀 Serveur lancé sur le port',PORT));

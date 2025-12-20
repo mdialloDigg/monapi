@@ -29,10 +29,10 @@ app.get('/users', (req, res) => {
   if (req.session.formAccess) {
     return res.sendFile(path.join(__dirname, 'users.html'));
   }
-  res.redirect('/auth/form');
+  res.redirect('/users');
 });
 
-app.post('/auth/form', (req, res) => {
+app.post('/users', (req, res) => {
   if (req.body.code === '123') req.session.formAccess = true;
   res.redirect('/users');
 });

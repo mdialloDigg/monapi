@@ -8,9 +8,9 @@ const session = require('express-session');
 
 const app = express();
 
-/* =======================
+/* =========================
    MIDDLEWARES
-======================= */
+========================= */
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -24,9 +24,9 @@ app.use(
   })
 );
 
-/* =======================
+/* =========================
    ROUTE RACINE
-======================= */
+========================= */
 app.get('/', (req, res) => {
   res.send('🚀 API Transfert en ligne');
 });
@@ -35,34 +35,10 @@ app.get('/', (req, res) => {
    🔐 FORMULAIRE /users — CODE 123
 ===================================================== */
 
+// Page formulaire ou demande de code
 app.get('/users', (req, res) => {
-  if (req.session.formAccess) {
-    return res.send(`
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Formulaire</title>
-<style>
-body { font-family: Arial; text-align:center; background:#f4f6f9; padding-top:50px; }
-button { padding:10px 15px; font-size:16px; margin-top:20px; }
-</style>
-</head>
-<body>
-<h2>✅ Accès autorisé au formulaire</h2>
-
-<p>Votre formulaire <b>users.html</b> est prêt.</p>
-
-<form method="post" action="/logout/form">
-  <button type="submit">🚪 Quitter le formulaire</button>
-</form>
-
-<script>
-  window.location.href = "/users.html";
-</script>
-</body>
-</html>
-`);
+  if (req.session.formAccess === true) {
+    return res.sendFile(path.join(__dirname, 'users.html'));
   }
 
   res.send(`
@@ -89,6 +65,7 @@ h2 { color:#007bff; }
 `);
 });
 
+// Vérification code formulaire
 app.post('/auth/form', (req, res) => {
   if (req.body.code === '123') {
     req.session.formAccess = true;
@@ -96,6 +73,7 @@ app.post('/auth/form', (req, res) => {
   res.redirect('/users');
 });
 
+// Quitter formulaire
 app.post('/logout/form', (req, res) => {
   req.session.formAccess = false;
   res.redirect('/users');
@@ -131,17 +109,18 @@ h2 { color:#28a745; }
 `);
   }
 
-  const users = await User.find({}, { password: 0, __v: 0 });
+  try {
+    const users = await User.find({}, { password: 0, __v: 0 });
 
-  let totalAmount = 0;
-  let totalRecovery = 0;
+    let totalAmount = 0;
+    let totalRecovery = 0;
 
-  users.forEach(u => {
-    totalAmount += u.amount;
-    totalRecovery += u.recoveryAmount;
-  });
+    users.forEach(u => {
+      totalAmount += u.amount;
+      totalRecovery += u.recoveryAmount;
+    });
 
-  let html = `
+    let html = `
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -150,8 +129,18 @@ h2 { color:#28a745; }
 <style>
 body { font-family: Arial; background:#f4f6f9; }
 h2 { text-align:center; margin-top:30px; }
-table { width:98%; margin:30px auto; border-collapse:collapse; background:#fff; }
-th, td { border:1px solid #ccc; padding:8px; font-size:13px; text-align:center; }
+table {
+  width:98%;
+  margin:30px auto;
+  border-collapse:collapse;
+  background:#fff;
+}
+th, td {
+  border:1px solid #ccc;
+  padding:8px;
+  font-size:13px;
+  text-align:center;
+}
 th { background:#007bff; color:#fff; }
 .origin { background:#eef4ff; font-weight:bold; }
 .destination { background:#ecfff1; font-weight:bold; }
@@ -172,53 +161,60 @@ button { padding:10px 15px; font-size:16px; }
 
 <table>
 <tr>
-<th colspan="7">EXPÉDITEUR</th>
-<th colspan="6">DESTINATAIRE</th>
-<th>Date</th>
+  <th colspan="7">EXPÉDITEUR</th>
+  <th colspan="6">DESTINATAIRE</th>
+  <th>Date</th>
 </tr>
 <tr>
-<th>Prénom</th><th>Nom</th><th>Tél</th><th>Origine</th><th>Montant</th><th>Frais</th><th>Code</th>
-<th>Prénom</th><th>Nom</th><th>Tél</th><th>Destination</th><th>Montant reçu</th><th>Mode</th>
-<th></th>
+  <th>Prénom</th><th>Nom</th><th>Tél</th><th>Origine</th><th>Montant</th><th>Frais</th><th>Code</th>
+  <th>Prénom</th><th>Nom</th><th>Tél</th><th>Destination</th><th>Montant reçu</th><th>Mode</th>
+  <th></th>
 </tr>`;
 
-  users.forEach(u => {
-    html += `
+    users.forEach(u => {
+      html += `
 <tr>
-<td>${u.senderFirstName}</td>
-<td>${u.senderLastName}</td>
-<td>${u.senderPhone}</td>
-<td class="origin">${u.originLocation}</td>
-<td>${u.amount}</td>
-<td>${u.fees}</td>
-<td>${u.code}</td>
+  <td>${u.senderFirstName}</td>
+  <td>${u.senderLastName}</td>
+  <td>${u.senderPhone}</td>
+  <td class="origin">${u.originLocation}</td>
+  <td>${u.amount}</td>
+  <td>${u.fees}</td>
+  <td>${u.code}</td>
 
-<td>${u.receiverFirstName}</td>
-<td>${u.receiverLastName}</td>
-<td>${u.receiverPhone}</td>
-<td class="destination">${u.destinationLocation}</td>
-<td>${u.recoveryAmount}</td>
-<td>${u.recoveryMode}</td>
+  <td>${u.receiverFirstName}</td>
+  <td>${u.receiverLastName}</td>
+  <td>${u.receiverPhone}</td>
+  <td class="destination">${u.destinationLocation}</td>
+  <td>${u.recoveryAmount}</td>
+  <td>${u.recoveryMode}</td>
 
-<td>${new Date(u.createdAt).toLocaleString()}</td>
+  <td>${new Date(u.createdAt).toLocaleString()}</td>
 </tr>`;
-  });
+    });
 
-  html += `
+    html += `
 <tr class="totals">
-<td colspan="4">TOTAL</td>
-<td>${totalAmount}</td>
-<td colspan="6"></td>
-<td>${totalRecovery}</td>
-<td colspan="2"></td>
+  <td colspan="4">TOTAL</td>
+  <td>${totalAmount}</td>
+  <td colspan="6"></td>
+  <td>${totalRecovery}</td>
+  <td colspan="2"></td>
 </tr>
 </table>
+
 </body>
 </html>`;
 
-  res.send(html);
+    res.send(html);
+
+  } catch (err) {
+    console.error('ERROR /users/all:', err);
+    res.status(500).send('Erreur serveur');
+  }
 });
 
+// Vérification code liste
 app.post('/auth/list', (req, res) => {
   if (req.body.code === '147') {
     req.session.listAccess = true;
@@ -226,20 +222,21 @@ app.post('/auth/list', (req, res) => {
   res.redirect('/users/all');
 });
 
+// Quitter liste
 app.post('/logout/list', (req, res) => {
   req.session.listAccess = false;
   res.redirect('/users/all');
 });
 
-/* =======================
+/* =========================
    MONGODB
-======================= */
+========================= */
 
 mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
 )
 .then(() => console.log('✅ MongoDB connecté'))
-.catch(err => console.error(err));
+.catch(err => console.error('❌ MongoDB erreur:', err));
 
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
@@ -262,9 +259,9 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-/* =======================
+/* =========================
    SERVEUR
-======================= */
+========================= */
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>

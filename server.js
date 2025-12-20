@@ -9,7 +9,6 @@ const app = express();
 /* ======================================================
    MIDDLEWARES
 ====================================================== */
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -26,7 +25,6 @@ app.use(
 /* ======================================================
    ROUTE RACINE
 ====================================================== */
-
 app.get('/', (req, res) => {
   res.send('🚀 API Transfert en ligne');
 });
@@ -34,7 +32,6 @@ app.get('/', (req, res) => {
 /* ======================================================
    🔐 ACCÈS FORMULAIRE /users (CODE 123)
 ====================================================== */
-
 app.get('/users', (req, res) => {
   if (req.session.formAccess === true) {
     return res.sendFile(path.join(__dirname, 'users.html'));
@@ -43,10 +40,7 @@ app.get('/users', (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Accès sécurisé</title>
-</head>
+<head><meta charset="UTF-8"><title>Accès sécurisé</title></head>
 <body style="text-align:center;padding-top:60px">
 <h2>🔒 Accès au formulaire</h2>
 <form method="post" action="/auth/form">
@@ -67,11 +61,57 @@ app.post('/auth/form', (req, res) => {
 });
 
 /* ======================================================
-   📥 ENREGISTREMENT UTILISATEUR (CORRECTION PRINCIPALE)
+   MONGODB
 ====================================================== */
+mongoose
+  .connect(
+    'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
+  )
+  .then(() => console.log('✅ MongoDB connecté'))
+  .catch(err => console.error(err));
 
+const userSchema = new mongoose.Schema({
+  senderFirstName: String,
+  senderLastName: String,
+  senderPhone: String,
+  originLocation: String,
+  amount: Number,
+  fees: Number,
+  feePercent: Number,
+  receiverFirstName: String,
+  receiverLastName: String,
+  receiverPhone: String,
+  destinationLocation: String,
+  recoveryAmount: Number,
+  recoveryMode: String,
+  code: { type: String, unique: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', userSchema);
+
+/* ======================================================
+   FONCTION POUR GÉNÉRER UN CODE UNIQUE
+====================================================== */
+async function generateUniqueCode() {
+  let code;
+  let exists = true;
+
+  while (exists) {
+    code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 chiffres
+    exists = await User.exists({ code });
+  }
+
+  return code;
+}
+
+/* ======================================================
+   📥 ENREGISTREMENT UTILISATEUR
+====================================================== */
 app.post('/users', async (req, res) => {
   try {
+    const code = req.body.code || (await generateUniqueCode());
+
     const newUser = new User({
       senderFirstName: req.body.senderFirstName,
       senderLastName: req.body.senderLastName,
@@ -90,7 +130,7 @@ app.post('/users', async (req, res) => {
       recoveryAmount: Number(req.body.recoveryAmount) || 0,
       recoveryMode: req.body.recoveryMode,
 
-      code: req.body.code
+      code
     });
 
     await newUser.save();
@@ -100,6 +140,7 @@ app.post('/users', async (req, res) => {
         ✅ Transfert enregistré avec succès
       </h2>
       <p style="text-align:center">
+        <strong>Code du transfert :</strong> ${code}<br>
         <a href="/users">➕ Nouveau transfert</a>
       </p>
     `);
@@ -112,7 +153,6 @@ app.post('/users', async (req, res) => {
 /* ======================================================
    🔐 ACCÈS LISTE /users/all (CODE 147)
 ====================================================== */
-
 app.get('/users/all', async (req, res) => {
   if (!req.session.listAccess) {
     return res.send(`
@@ -150,6 +190,7 @@ app.get('/users/all', async (req, res) => {
         <th>Montant</th>
         <th>Destination</th>
         <th>Reçu</th>
+        <th>Code</th>
         <th>Date</th>
       </tr>
     `;
@@ -161,6 +202,7 @@ app.get('/users/all', async (req, res) => {
         <td>${u.amount}</td>
         <td>${u.destinationLocation}</td>
         <td>${u.recoveryAmount}</td>
+        <td>${u.code}</td>
         <td>${new Date(u.createdAt).toLocaleString()}</td>
       </tr>`;
     });
@@ -171,6 +213,7 @@ app.get('/users/all', async (req, res) => {
         <td><b>${totalAmount}</b></td>
         <td></td>
         <td><b>${totalRecovery}</b></td>
+        <td></td>
         <td></td>
       </tr>
     </table>
@@ -190,40 +233,8 @@ app.post('/auth/list', (req, res) => {
 });
 
 /* ======================================================
-   MONGODB
-====================================================== */
-
-mongoose
-  .connect(
-    'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
-  )
-  .then(() => console.log('✅ MongoDB connecté'))
-  .catch(err => console.error(err));
-
-const userSchema = new mongoose.Schema({
-  senderFirstName: String,
-  senderLastName: String,
-  senderPhone: String,
-  originLocation: String,
-  amount: Number,
-  fees: Number,
-  feePercent: Number,
-  receiverFirstName: String,
-  receiverLastName: String,
-  receiverPhone: String,
-  destinationLocation: String,
-  recoveryAmount: Number,
-  recoveryMode: String,
-  code: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const User = mongoose.model('User', userSchema);
-
-/* ======================================================
    SERVEUR
 ====================================================== */
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log('🚀 Serveur en ligne sur le port', PORT)

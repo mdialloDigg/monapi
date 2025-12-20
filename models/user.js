@@ -17,11 +17,11 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
-  email: {
+  /*email: {
     type: String,
     required: true,
     trim: true
-  },
+  },*/
 
   senderPhone: {
     type: String,
@@ -89,11 +89,11 @@ const userSchema = new mongoose.Schema({
   /* =========================
      🔐 SÉCURITÉ / SYSTÈME
   ========================= */
-  password: {
+  /* password: {
     type: String,
     required: true
   },
-
+*/
   code: {
     type: String,
     required: true,

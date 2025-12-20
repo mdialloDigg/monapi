@@ -67,7 +67,7 @@ app.get('/users/all', async (req, res) => {
   }
 });
 
-app.post('/auth/list', (req, res) => {
+app.post('/users/all', (req, res) => {
   if (req.body.code === '147') req.session.listAccess = true;
   res.redirect('/users/all');
 });

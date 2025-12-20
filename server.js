@@ -1,4 +1,3 @@
-// server.js
 const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
@@ -8,13 +7,13 @@ const session = require('express-session');
 
 const app = express();
 
-/* =========================
+/* =====================
    MIDDLEWARES
-========================= */
+===================== */
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(
   session({
@@ -24,20 +23,20 @@ app.use(
   })
 );
 
-/* =========================
+/* =====================
    ROUTE RACINE
-========================= */
+===================== */
 app.get('/', (req, res) => {
   res.send('🚀 API Transfert en ligne');
 });
 
 /* =====================================================
-   🔐 FORMULAIRE /users — CODE 123
+   🔐 FORMULAIRE /users (CODE 123)
 ===================================================== */
 
 app.get('/users', (req, res) => {
   if (req.session.formAccess === true) {
-    return res.sendFile(path.join(__dirname, 'users.html'));
+    return res.sendFile(path.join(__dirname, 'public', 'users.html'));
   }
 
   res.send(`
@@ -54,7 +53,7 @@ h2 { color:#007bff; }
 </head>
 <body>
 <h2>🔒 Accès au formulaire</h2>
-<form method="post" action="/auth/form">
+<form method="POST" action="/auth/form">
   <input type="password" name="code" placeholder="Code d'accès" required>
   <br><br>
   <button type="submit">Valider</button>
@@ -77,59 +76,44 @@ app.post('/logout/form', (req, res) => {
 });
 
 /* =====================================================
-   📥 POST /users — ENREGISTREMENT DU FORMULAIRE
+   📥 POST /users — ENREGISTREMENT TRANSFERT
 ===================================================== */
 
 app.post('/users', async (req, res) => {
   try {
-    const data = req.body;
+    const d = req.body;
 
     if (
-      !data.senderFirstName ||
-      !data.senderLastName ||
-      !data.senderPhone ||
-      !data.originLocation ||
-      !data.receiverFirstName ||
-      !data.receiverLastName ||
-      !data.receiverPhone ||
-      !data.destinationLocation ||
-      !data.recoveryMode ||
-      !data.password ||
-      isNaN(data.amount) ||
-      isNaN(data.fees) ||
-      isNaN(data.feePercent) ||
-      isNaN(data.recoveryAmount)
+      !d.senderFirstName || !d.senderLastName || !d.senderPhone ||
+      !d.originLocation || !d.receiverFirstName || !d.receiverLastName ||
+      !d.receiverPhone || !d.destinationLocation || !d.recoveryMode ||
+      !d.password || isNaN(d.amount) || isNaN(d.fees) ||
+      isNaN(d.feePercent) || isNaN(d.recoveryAmount)
     ) {
       return res.status(400).send('Champs invalides');
     }
 
-    const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-    const number = Math.floor(100 + Math.random() * 900);
-    const code = letter + number;
+    const code =
+      String.fromCharCode(65 + Math.floor(Math.random() * 26)) +
+      Math.floor(100 + Math.random() * 900);
 
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const hashedPassword = await bcrypt.hash(d.password, 10);
 
-    const user = new User({
-      ...data,
-      amount: Number(data.amount),
-      fees: Number(data.fees),
-      feePercent: Number(data.feePercent),
-      recoveryAmount: Number(data.recoveryAmount),
+    await User.create({
+      ...d,
+      amount: Number(d.amount),
+      fees: Number(d.fees),
+      feePercent: Number(d.feePercent),
+      recoveryAmount: Number(d.recoveryAmount),
       password: hashedPassword,
       code
     });
 
-    await user.save();
-
     res.send(`
-      <h2 style="text-align:center;color:green;">
-        ✅ Transfert enregistré avec succès<br>
-        Code : <b>${code}</b>
-      </h2>
-      <p style="text-align:center;">
-        <a href="/users">⬅️ Retour au formulaire</a>
-      </p>
-    `);
+<h2 style="text-align:center;color:green;">✅ Transfert enregistré</h2>
+<p style="text-align:center;">Code : <b>${code}</b></p>
+<p style="text-align:center;"><a href="/users">⬅️ Retour</a></p>
+`);
 
   } catch (err) {
     console.error('POST /users ERROR:', err);
@@ -138,7 +122,7 @@ app.post('/users', async (req, res) => {
 });
 
 /* =====================================================
-   🔐 LISTE DES TRANSFERTS /users/all — CODE 147
+   🔐 LISTE /users/all (CODE 147)
 ===================================================== */
 
 app.get('/users/all', async (req, res) => {
@@ -157,7 +141,7 @@ h2 { color:#28a745; }
 </head>
 <body>
 <h2>🔒 Accès à la liste des transferts</h2>
-<form method="post" action="/auth/list">
+<form method="POST" action="/auth/list">
   <input type="password" name="code" placeholder="Code d'accès" required>
   <br><br>
   <button type="submit">Valider</button>
@@ -172,6 +156,7 @@ h2 { color:#28a745; }
 
     let totalAmount = 0;
     let totalRecovery = 0;
+
     users.forEach(u => {
       totalAmount += u.amount;
       totalRecovery += u.recoveryAmount;
@@ -179,11 +164,16 @@ h2 { color:#28a745; }
 
     let html = `
 <h2 style="text-align:center;">📋 Liste des transferts</h2>
-<form method="post" action="/logout/list" style="text-align:center;">
+
+<form method="POST" action="/logout/list" style="text-align:center;">
 <button>🚪 Quitter</button>
 </form>
+
 <table border="1" width="98%" align="center">
-<tr><th>Origine</th><th>Montant</th><th>Destination</th><th>Montant reçu</th></tr>`;
+<tr>
+<th>Origine</th><th>Montant</th>
+<th>Destination</th><th>Montant reçu</th>
+</tr>`;
 
     users.forEach(u => {
       html += `
@@ -224,9 +214,9 @@ app.post('/logout/list', (req, res) => {
   res.redirect('/users/all');
 });
 
-/* =========================
+/* =====================
    MONGODB
-========================= */
+===================== */
 
 mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
@@ -255,11 +245,11 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-/* =========================
+/* =====================
    SERVEUR
-========================= */
+===================== */
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log('🚀 Serveur en ligne sur le port', PORT)
-);
+app.listen(PORT, () => {
+  console.log('🚀 Serveur en ligne sur le port', PORT);
+});

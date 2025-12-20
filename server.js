@@ -38,7 +38,7 @@ app.post('/users', (req, res) => {
 });
 
 app.get('/users/all', async (req, res) => {
-  if (!req.session.listAccess) return res.redirect('/auth/list');
+  if (!req.session.listAccess) return res.redirect('/users/all');
 
   try {
     const users = await User.find({}, { __v: 0 });

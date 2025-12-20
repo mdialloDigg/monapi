@@ -8,34 +8,61 @@ const session = require('express-session');
 
 const app = express();
 
-// Middlewares
+/* =======================
+   MIDDLEWARES
+======================= */
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// SESSION (clé secrète à changer en prod)
 app.use(
   session({
-    secret: 'super-secret-transfert-key',
+    secret: 'transfert-secret-key',
     resave: false,
     saveUninitialized: false
   })
 );
 
-// Route racine
+/* =======================
+   ROUTE RACINE
+======================= */
 app.get('/', (req, res) => {
   res.send('🚀 API Transfert en ligne');
 });
 
-/* ======================================================
-   🔐 ACCÈS FORMULAIRE /users (CODE 123)
-====================================================== */
+/* =====================================================
+   🔐 FORMULAIRE /users — CODE 123
+===================================================== */
 
-// Page formulaire ou demande de code
 app.get('/users', (req, res) => {
-  if (req.session.formAccess === true) {
-    return res.sendFile(path.join(__dirname, 'users.html'));
+  if (req.session.formAccess) {
+    return res.send(`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Formulaire</title>
+<style>
+body { font-family: Arial; text-align:center; background:#f4f6f9; padding-top:50px; }
+button { padding:10px 15px; font-size:16px; margin-top:20px; }
+</style>
+</head>
+<body>
+<h2>✅ Accès autorisé au formulaire</h2>
+
+<p>Votre formulaire <b>users.html</b> est prêt.</p>
+
+<form method="post" action="/logout/form">
+  <button type="submit">🚪 Quitter le formulaire</button>
+</form>
+
+<script>
+  window.location.href = "/users.html";
+</script>
+</body>
+</html>
+`);
   }
 
   res.send(`
@@ -43,9 +70,9 @@ app.get('/users', (req, res) => {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Accès sécurisé</title>
+<title>Accès Formulaire</title>
 <style>
-body { font-family: Arial; text-align:center; padding-top:60px; background:#f4f6f9; }
+body { font-family: Arial; text-align:center; background:#f4f6f9; padding-top:60px; }
 input, button { padding:10px; font-size:16px; }
 h2 { color:#007bff; }
 </style>
@@ -62,18 +89,21 @@ h2 { color:#007bff; }
 `);
 });
 
-// Vérification code formulaire
 app.post('/auth/form', (req, res) => {
   if (req.body.code === '123') {
     req.session.formAccess = true;
-    return res.redirect('/users');
   }
   res.redirect('/users');
 });
 
-/* ======================================================
-   🔐 ACCÈS LISTE /users/all (CODE 147)
-====================================================== */
+app.post('/logout/form', (req, res) => {
+  req.session.formAccess = false;
+  res.redirect('/users');
+});
+
+/* =====================================================
+   🔐 LISTE DES TRANSFERTS /users/all — CODE 147
+===================================================== */
 
 app.get('/users/all', async (req, res) => {
   if (!req.session.listAccess) {
@@ -82,9 +112,9 @@ app.get('/users/all', async (req, res) => {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Accès sécurisé</title>
+<title>Accès Liste</title>
 <style>
-body { font-family: Arial; text-align:center; padding-top:60px; background:#f4f6f9; }
+body { font-family: Arial; text-align:center; background:#f4f6f9; padding-top:60px; }
 input, button { padding:10px; font-size:16px; }
 h2 { color:#28a745; }
 </style>
@@ -101,18 +131,17 @@ h2 { color:#28a745; }
 `);
   }
 
-  try {
-    const users = await User.find({}, { password: 0, __v: 0 });
+  const users = await User.find({}, { password: 0, __v: 0 });
 
-    let totalAmount = 0;
-    let totalRecovery = 0;
+  let totalAmount = 0;
+  let totalRecovery = 0;
 
-    users.forEach(u => {
-      totalAmount += u.amount;
-      totalRecovery += u.recoveryAmount;
-    });
+  users.forEach(u => {
+    totalAmount += u.amount;
+    totalRecovery += u.recoveryAmount;
+  });
 
-    let html = `
+  let html = `
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -127,11 +156,19 @@ th { background:#007bff; color:#fff; }
 .origin { background:#eef4ff; font-weight:bold; }
 .destination { background:#ecfff1; font-weight:bold; }
 .totals { background:#222; color:#fff; font-weight:bold; }
+.logout { text-align:center; margin-bottom:20px; }
+button { padding:10px 15px; font-size:16px; }
 </style>
 </head>
 <body>
 
 <h2>📋 Liste des transferts</h2>
+
+<div class="logout">
+  <form method="post" action="/logout/list">
+    <button type="submit">🚪 Quitter la liste</button>
+  </form>
+</div>
 
 <table>
 <tr>
@@ -145,8 +182,8 @@ th { background:#007bff; color:#fff; }
 <th></th>
 </tr>`;
 
-    users.forEach(u => {
-      html += `
+  users.forEach(u => {
+    html += `
 <tr>
 <td>${u.senderFirstName}</td>
 <td>${u.senderLastName}</td>
@@ -165,9 +202,9 @@ th { background:#007bff; color:#fff; }
 
 <td>${new Date(u.createdAt).toLocaleString()}</td>
 </tr>`;
-    });
+  });
 
-    html += `
+  html += `
 <tr class="totals">
 <td colspan="4">TOTAL</td>
 <td>${totalAmount}</td>
@@ -179,25 +216,24 @@ th { background:#007bff; color:#fff; }
 </body>
 </html>`;
 
-    res.send(html);
-
-  } catch (err) {
-    res.status(500).send('Erreur serveur');
-  }
+  res.send(html);
 });
 
-// Vérification code liste
 app.post('/auth/list', (req, res) => {
   if (req.body.code === '147') {
     req.session.listAccess = true;
-    return res.redirect('/users/all');
   }
   res.redirect('/users/all');
 });
 
-/* ======================================================
-   MongoDB + API
-====================================================== */
+app.post('/logout/list', (req, res) => {
+  req.session.listAccess = false;
+  res.redirect('/users/all');
+});
+
+/* =======================
+   MONGODB
+======================= */
 
 mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
@@ -226,7 +262,10 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Serveur
+/* =======================
+   SERVEUR
+======================= */
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log('🚀 Serveur en ligne sur le port', PORT)

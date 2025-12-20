@@ -103,8 +103,8 @@ form { background:#fff; width:900px; margin:40px auto; padding:20px; border-radi
 .dest { background:#ffdede; }
 input, select, button { width:100%; padding:8px; margin-top:10px; }
 button { background:#007bff; color:white; border:none; font-size:16px; cursor:pointer; }
-#message { text-align:center; margin-top:15px; font-weight:bold; }
 #logout { background:#dc3545; margin-top:10px; }
+#message { text-align:center; margin-top:15px; font-weight:bold; }
 </style>
 </head>
 
@@ -245,11 +245,14 @@ th { background:#007bff; color:#fff; }
 .origin { background:#eef4ff; font-weight:bold; }
 .destination { background:#ecfff1; font-weight:bold; }
 .totals { background:#222; color:#fff; font-weight:bold; }
+#logout { display:block; width:200px; margin:20px auto; padding:10px; background:#dc3545; color:#fff; border:none; font-size:16px; cursor:pointer; border-radius:5px; }
 </style>
 </head>
 <body>
 
 <h2>📋 Liste des transferts</h2>
+
+<button id="logout" onclick="window.location.href='/logout'">Se déconnecter</button>
 
 <table>
 <tr>

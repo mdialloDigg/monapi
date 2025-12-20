@@ -1,5 +1,3 @@
-// server.js
-const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -8,13 +6,11 @@ const session = require('express-session');
 
 const app = express();
 
-// Middlewares
+/* ================= MIDDLEWARE ================= */
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
 
-// SESSION (clé secrète à changer en prod)
 app.use(
   session({
     secret: 'super-secret-transfert-key',
@@ -23,14 +19,13 @@ app.use(
   })
 );
 
-// MongoDB connection
+/* ================= MONGODB ================= */
 mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
 )
 .then(() => console.log('✅ MongoDB connecté'))
 .catch(err => console.error(err));
 
-// Schema Mongoose
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
   senderLastName: String,
@@ -39,12 +34,14 @@ const userSchema = new mongoose.Schema({
   amount: Number,
   fees: Number,
   feePercent: Number,
+
   receiverFirstName: String,
   receiverLastName: String,
   receiverPhone: String,
   destinationLocation: String,
   recoveryAmount: Number,
   recoveryMode: String,
+
   password: String,
   code: String,
   createdAt: { type: Date, default: Date.now }
@@ -52,99 +49,83 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// ROUTE RACINE
-app.get('/', (req, res) => {
-  res.send('🚀 API Transfert en ligne');
-});
-
-/* ======================================================
-   🔐 ACCÈS FORMULAIRE /users (CODE 123)
-====================================================== */
-
+/* ================= FORMULAIRE ================= */
 app.get('/users', (req, res) => {
   if (!req.session.formAccess) {
     return res.send(`
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Accès sécurisé</title>
-<style>
-body { font-family: Arial; text-align:center; padding-top:60px; background:#f4f6f9; }
-input, button { padding:10px; font-size:16px; }
-h2 { color:#007bff; }
-</style>
-</head>
-<body>
-<h2>🔒 Accès au formulaire</h2>
-<form method="post" action="/auth/form">
-  <input type="password" name="code" placeholder="Code d'accès" required>
-  <br><br>
-  <button type="submit">Valider</button>
-</form>
-</body>
-</html>
-`);
+      <h2 style="text-align:center;margin-top:60px">🔒 Accès formulaire</h2>
+      <form method="post" action="/auth/form" style="text-align:center">
+        <input type="password" name="code" placeholder="Code d'accès" required>
+        <br><br>
+        <button>Valider</button>
+      </form>
+    `);
   }
 
-  // FORMULAIRE INTÉGRÉ + Bouton Déconnexion
-  res.send(`
+res.send(`
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <title>Créer un transfert</title>
 <style>
-body { font-family: Arial; background:#f2f2f2; }
-form { background:#fff; width:900px; margin:40px auto; padding:20px; border-radius:8px; }
-.container { display:flex; gap:20px; }
-.box { flex:1; padding:15px; border-radius:6px; }
-.origin { background:#e9f1ff; }
-.dest { background:#ffdede; }
-input, select, button { width:100%; padding:8px; margin-top:10px; }
-button { background:#007bff; color:white; border:none; font-size:16px; cursor:pointer; }
-#logout { background:#dc3545; margin-top:10px; }
-#message { text-align:center; margin-top:15px; font-weight:bold; }
+body{font-family:Arial;background:#f2f2f2}
+form{background:#fff;width:900px;margin:40px auto;padding:20px;border-radius:8px}
+.container{display:flex;gap:20px}
+.box{flex:1;padding:15px;border-radius:6px}
+.origin{background:#e9f1ff}
+.dest{background:#ffdede}
+input,select,button{width:100%;padding:8px;margin-top:8px}
+button{font-size:15px}
+#save{background:#007bff;color:#fff}
+#print{background:#28a745;color:#fff}
+#logout{background:#dc3545;color:#fff}
+#message{text-align:center;font-weight:bold}
 </style>
 </head>
-
 <body>
 
 <form id="form">
-<h3>💸 Créer un transfert</h3>
+<h3 style="text-align:center">💸 Créer un transfert</h3>
 
 <div class="container">
-  <div class="box origin">
-    <h4>📤 Origine</h4>
-    <input id="senderFirstName" placeholder="Prénom expéditeur" required>
-    <input id="senderLastName" placeholder="Nom expéditeur" required>
-    <input id="senderPhone" placeholder="Téléphone expéditeur" required>
-    <input id="originLocation" placeholder="Origine" required>
-    <input id="amount" type="number" placeholder="Montant" required>
-    <input id="fees" type="number" placeholder="Frais" required>
-    <input id="feePercent" type="number" placeholder="% Frais" required>
-  </div>
+<div class="box origin">
+<h4>📤 Origine</h4>
+<input id="senderFirstName" placeholder="Prénom expéditeur" required>
+<input id="senderLastName" placeholder="Nom expéditeur" required>
+<input id="senderPhone" placeholder="Téléphone expéditeur" required>
+<input id="originLocation" placeholder="Origine" required>
+<input id="amount" type="number" placeholder="Montant" required>
+<input id="fees" type="number" placeholder="Frais" required>
+<input id="feePercent" type="number" placeholder="% Frais" required>
+</div>
 
-  <div class="box dest">
-    <h4>📥 Destination</h4>
-    <input id="receiverFirstName" placeholder="Prénom destinataire" required>
-    <input id="receiverLastName" placeholder="Nom destinataire" required>
-    <input id="receiverPhone" placeholder="Téléphone destinataire" required>
-    <input id="destinationLocation" placeholder="Destination" required>
-    <input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
-    <input id="recoveryMode" placeholder="Mode de récupération" required>
-  </div>
+<div class="box dest">
+<h4>📥 Destination</h4>
+<input id="receiverFirstName" placeholder="Prénom destinataire" required>
+<input id="receiverLastName" placeholder="Nom destinataire" required>
+<input id="receiverPhone" placeholder="Téléphone destinataire" required>
+<input id="destinationLocation" placeholder="Destination" required>
+<input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
+<input id="recoveryMode" placeholder="Mode de récupération" required>
+</div>
 </div>
 
 <input id="password" type="password" placeholder="Mot de passe" required>
-<button type="submit">💾 Enregistrer</button>
-<button id="logout" type="button" onclick="window.location.href='/logout'">Se déconnecter</button>
+
+<button id="save">💾 Enregistrer</button>
+<button id="print" type="button" onclick="printReceipt()">🖨 Imprimer</button>
+<button id="logout" type="button" onclick="location.href='/logout'">Se déconnecter</button>
+
 <p id="message"></p>
 </form>
 
 <script>
-document.getElementById('form').addEventListener('submit', async e => {
+let lastCode = '';
+
+form.addEventListener('submit', async e => {
   e.preventDefault();
+
   const payload = {
     senderFirstName: senderFirstName.value,
     senderLastName: senderLastName.value,
@@ -153,26 +134,46 @@ document.getElementById('form').addEventListener('submit', async e => {
     amount: Number(amount.value),
     fees: Number(fees.value),
     feePercent: Number(feePercent.value),
+
     receiverFirstName: receiverFirstName.value,
     receiverLastName: receiverLastName.value,
     receiverPhone: receiverPhone.value,
     destinationLocation: destinationLocation.value,
     recoveryAmount: Number(recoveryAmount.value),
     recoveryMode: recoveryMode.value,
+
     password: password.value
   };
 
   const res = await fetch('/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
     body: JSON.stringify(payload)
   });
 
   const data = await res.json();
   message.style.color = res.ok ? 'green' : 'red';
-  message.innerText = data.message + (data.code ? ' | Code: ' + data.code : '');
-  if (res.ok) form.reset();
+  message.innerText = data.message + ' | Code : ' + data.code;
+  if(res.ok) lastCode = data.code;
 });
+
+function printReceipt(){
+  if(!lastCode){
+    alert("Veuillez enregistrer d'abord");
+    return;
+  }
+
+  const w = window.open('', '', 'width=400,height=400');
+  w.document.write(
+    '<h2>📄 Reçu de transfert</h2>' +
+    '<p><b>Code :</b> ' + lastCode + '</p>' +
+    '<p><b>Destinataire :</b> ' +
+    receiverFirstName.value + ' ' + receiverLastName.value + '</p>' +
+    '<p><b>Destination :</b> ' + destinationLocation.value + '</p>'
+  );
+  w.document.close();
+  w.print();
+}
 </script>
 
 </body>
@@ -180,79 +181,60 @@ document.getElementById('form').addEventListener('submit', async e => {
 `);
 });
 
-// Vérification code formulaire
-app.post('/auth/form', (req, res) => {
-  if (req.body.code === '123') {
-    req.session.formAccess = true;
-    return res.redirect('/users');
-  }
+/* ================= AUTH FORM ================= */
+app.post('/auth/form',(req,res)=>{
+  if(req.body.code==='123') req.session.formAccess=true;
   res.redirect('/users');
 });
 
-/* ======================================================
-   🔐 ACCÈS LISTE /users/all (CODE 147)
-====================================================== */
+/* ================= SAVE ================= */
+app.post('/users', async (req,res)=>{
+  const code = Math.floor(100000+Math.random()*900000).toString();
+  const hash = await bcrypt.hash(req.body.password,10);
+  await new User({...req.body,password:hash,code}).save();
+  res.json({message:'✅ Transfert enregistré',code});
+});
 
-app.get('/users/all', async (req, res) => {
-  if (!req.session.listAccess) {
+/* ================= LISTE DES TRANSFERTS (STYLÉE + TOTAUX) ================= */
+app.get('/users/all', async (req,res)=>{
+  if(!req.session.listAccess){
     return res.send(`
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Accès sécurisé</title>
-<style>
-body { font-family: Arial; text-align:center; padding-top:60px; background:#f4f6f9; }
-input, button { padding:10px; font-size:16px; }
-h2 { color:#28a745; }
-</style>
-</head>
-<body>
-<h2>🔒 Accès à la liste des transferts</h2>
-<form method="post" action="/auth/list">
-  <input type="password" name="code" placeholder="Code d'accès" required>
-  <br><br>
-  <button type="submit">Valider</button>
-</form>
-</body>
-</html>
-`);
+      <h2 style="text-align:center;margin-top:60px">🔒 Accès liste</h2>
+      <form method="post" action="/auth/list" style="text-align:center">
+        <input type="password" name="code" placeholder="Code d'accès" required>
+        <br><br>
+        <button>Valider</button>
+      </form>
+    `);
   }
 
-  try {
-    const users = await User.find({}, { password: 0, __v: 0 });
+  const users = await User.find({}, {password:0,__v:0});
+  let totalAmount = 0;
+  let totalRecovery = 0;
 
-    let totalAmount = 0;
-    let totalRecovery = 0;
+  users.forEach(u=>{
+    totalAmount += u.amount || 0;
+    totalRecovery += u.recoveryAmount || 0;
+  });
 
-    users.forEach(u => {
-      totalAmount += u.amount;
-      totalRecovery += u.recoveryAmount;
-    });
-
-    let html = `
+  let html = `
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Liste des transferts</title>
+<html><head><meta charset="UTF-8"><title>Liste des transferts</title>
 <style>
-body { font-family: Arial; background:#f4f6f9; }
-h2 { text-align:center; margin-top:30px; }
-table { width:98%; margin:30px auto; border-collapse:collapse; background:#fff; }
-th, td { border:1px solid #ccc; padding:8px; font-size:13px; text-align:center; }
-th { background:#007bff; color:#fff; }
-.origin { background:#eef4ff; font-weight:bold; }
-.destination { background:#ecfff1; font-weight:bold; }
-.totals { background:#222; color:#fff; font-weight:bold; }
-#logout { display:block; width:200px; margin:20px auto; padding:10px; background:#dc3545; color:#fff; border:none; font-size:16px; cursor:pointer; border-radius:5px; }
-</style>
-</head>
+body{font-family:Arial;background:#f4f6f9}
+table{width:98%;margin:20px auto;border-collapse:collapse;background:#fff}
+th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:center}
+th{background:#007bff;color:#fff}
+.origin{background:#eef4ff;font-weight:bold}
+.destination{background:#ecfff1;font-weight:bold}
+.totals{background:#222;color:#fff;font-weight:bold}
+h2{text-align:center}
+.logout{display:block;text-align:center;margin:10px}
+</style></head>
 <body>
 
 <h2>📋 Liste des transferts</h2>
-
-<button id="logout" onclick="window.location.href='/logout'">Se déconnecter</button>
+<a class="logout" href="/logout">🚪 Se déconnecter</a>
 
 <table>
 <tr>
@@ -266,8 +248,8 @@ th { background:#007bff; color:#fff; }
 <th></th>
 </tr>`;
 
-    users.forEach(u => {
-      html += `
+users.forEach(u=>{
+html+=`
 <tr>
 <td>${u.senderFirstName}</td>
 <td>${u.senderLastName}</td>
@@ -276,17 +258,19 @@ th { background:#007bff; color:#fff; }
 <td>${u.amount}</td>
 <td>${u.fees}</td>
 <td>${u.code}</td>
+
 <td>${u.receiverFirstName}</td>
 <td>${u.receiverLastName}</td>
 <td>${u.receiverPhone}</td>
 <td class="destination">${u.destinationLocation}</td>
 <td>${u.recoveryAmount}</td>
 <td>${u.recoveryMode}</td>
+
 <td>${new Date(u.createdAt).toLocaleString()}</td>
 </tr>`;
-    });
+});
 
-    html += `
+html+=`
 <tr class="totals">
 <td colspan="4">TOTAL</td>
 <td>${totalAmount}</td>
@@ -295,65 +279,22 @@ th { background:#007bff; color:#fff; }
 <td colspan="2"></td>
 </tr>
 </table>
-</body>
-</html>`;
+</body></html>`;
 
-    res.send(html);
-  } catch (err) {
-    res.status(500).send('Erreur serveur');
-  }
+res.send(html);
 });
 
-// Vérification code liste
-app.post('/auth/list', (req, res) => {
-  if (req.body.code === '147') {
-    req.session.listAccess = true;
-    return res.redirect('/users/all');
-  }
+/* ================= AUTH LIST ================= */
+app.post('/auth/list',(req,res)=>{
+  if(req.body.code==='147') req.session.listAccess=true;
   res.redirect('/users/all');
 });
 
-/* ======================================================
-   POST /users : ENREGISTRER UN TRANSFERT
-====================================================== */
-app.post('/users', async (req, res) => {
-  try {
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const user = new User({
-      ...req.body,
-      password: hashedPassword,
-      code
-    });
-
-    await user.save();
-
-    res.json({
-      message: '✅ Transfert enregistré avec succès',
-      code
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: '❌ Erreur serveur' });
-  }
+/* ================= LOGOUT ================= */
+app.get('/logout',(req,res)=>{
+  req.session.destroy(()=>res.redirect('/users'));
 });
 
-/* ======================================================
-   LOGOUT
-====================================================== */
-app.get('/logout', (req, res) => {
-  req.session.destroy(err => {
-    if (err) {
-      return res.status(500).send('Erreur lors de la déconnexion');
-    }
-    res.redirect('/users');
-  });
-});
-
-// Serveur
+/* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log('🚀 Serveur en ligne sur le port', PORT)
-);
+app.listen(PORT,()=>console.log('🚀 Serveur lancé sur le port',PORT));

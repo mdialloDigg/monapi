@@ -35,7 +35,6 @@ app.get('/', (req, res) => {
    🔐 FORMULAIRE /users — CODE 123
 ===================================================== */
 
-// Page formulaire ou demande de code
 app.get('/users', (req, res) => {
   if (req.session.formAccess === true) {
     return res.sendFile(path.join(__dirname, 'users.html'));
@@ -65,7 +64,6 @@ h2 { color:#007bff; }
 `);
 });
 
-// Vérification code formulaire
 app.post('/auth/form', (req, res) => {
   if (req.body.code === '123') {
     req.session.formAccess = true;
@@ -73,10 +71,70 @@ app.post('/auth/form', (req, res) => {
   res.redirect('/users');
 });
 
-// Quitter formulaire
 app.post('/logout/form', (req, res) => {
   req.session.formAccess = false;
   res.redirect('/users');
+});
+
+/* =====================================================
+   📥 POST /users — ENREGISTREMENT DU FORMULAIRE
+===================================================== */
+
+app.post('/users', async (req, res) => {
+  try {
+    const data = req.body;
+
+    if (
+      !data.senderFirstName ||
+      !data.senderLastName ||
+      !data.senderPhone ||
+      !data.originLocation ||
+      !data.receiverFirstName ||
+      !data.receiverLastName ||
+      !data.receiverPhone ||
+      !data.destinationLocation ||
+      !data.recoveryMode ||
+      !data.password ||
+      isNaN(data.amount) ||
+      isNaN(data.fees) ||
+      isNaN(data.feePercent) ||
+      isNaN(data.recoveryAmount)
+    ) {
+      return res.status(400).send('Champs invalides');
+    }
+
+    const letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    const number = Math.floor(100 + Math.random() * 900);
+    const code = letter + number;
+
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const user = new User({
+      ...data,
+      amount: Number(data.amount),
+      fees: Number(data.fees),
+      feePercent: Number(data.feePercent),
+      recoveryAmount: Number(data.recoveryAmount),
+      password: hashedPassword,
+      code
+    });
+
+    await user.save();
+
+    res.send(`
+      <h2 style="text-align:center;color:green;">
+        ✅ Transfert enregistré avec succès<br>
+        Code : <b>${code}</b>
+      </h2>
+      <p style="text-align:center;">
+        <a href="/users">⬅️ Retour au formulaire</a>
+      </p>
+    `);
+
+  } catch (err) {
+    console.error('POST /users ERROR:', err);
+    res.status(500).send('Erreur serveur');
+  }
 });
 
 /* =====================================================
@@ -114,107 +172,46 @@ h2 { color:#28a745; }
 
     let totalAmount = 0;
     let totalRecovery = 0;
-
     users.forEach(u => {
       totalAmount += u.amount;
       totalRecovery += u.recoveryAmount;
     });
 
     let html = `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Liste des transferts</title>
-<style>
-body { font-family: Arial; background:#f4f6f9; }
-h2 { text-align:center; margin-top:30px; }
-table {
-  width:98%;
-  margin:30px auto;
-  border-collapse:collapse;
-  background:#fff;
-}
-th, td {
-  border:1px solid #ccc;
-  padding:8px;
-  font-size:13px;
-  text-align:center;
-}
-th { background:#007bff; color:#fff; }
-.origin { background:#eef4ff; font-weight:bold; }
-.destination { background:#ecfff1; font-weight:bold; }
-.totals { background:#222; color:#fff; font-weight:bold; }
-.logout { text-align:center; margin-bottom:20px; }
-button { padding:10px 15px; font-size:16px; }
-</style>
-</head>
-<body>
-
-<h2>📋 Liste des transferts</h2>
-
-<div class="logout">
-  <form method="post" action="/logout/list">
-    <button type="submit">🚪 Quitter la liste</button>
-  </form>
-</div>
-
-<table>
-<tr>
-  <th colspan="7">EXPÉDITEUR</th>
-  <th colspan="6">DESTINATAIRE</th>
-  <th>Date</th>
-</tr>
-<tr>
-  <th>Prénom</th><th>Nom</th><th>Tél</th><th>Origine</th><th>Montant</th><th>Frais</th><th>Code</th>
-  <th>Prénom</th><th>Nom</th><th>Tél</th><th>Destination</th><th>Montant reçu</th><th>Mode</th>
-  <th></th>
-</tr>`;
+<h2 style="text-align:center;">📋 Liste des transferts</h2>
+<form method="post" action="/logout/list" style="text-align:center;">
+<button>🚪 Quitter</button>
+</form>
+<table border="1" width="98%" align="center">
+<tr><th>Origine</th><th>Montant</th><th>Destination</th><th>Montant reçu</th></tr>`;
 
     users.forEach(u => {
       html += `
 <tr>
-  <td>${u.senderFirstName}</td>
-  <td>${u.senderLastName}</td>
-  <td>${u.senderPhone}</td>
-  <td class="origin">${u.originLocation}</td>
-  <td>${u.amount}</td>
-  <td>${u.fees}</td>
-  <td>${u.code}</td>
-
-  <td>${u.receiverFirstName}</td>
-  <td>${u.receiverLastName}</td>
-  <td>${u.receiverPhone}</td>
-  <td class="destination">${u.destinationLocation}</td>
-  <td>${u.recoveryAmount}</td>
-  <td>${u.recoveryMode}</td>
-
-  <td>${new Date(u.createdAt).toLocaleString()}</td>
+<td>${u.originLocation}</td>
+<td>${u.amount}</td>
+<td>${u.destinationLocation}</td>
+<td>${u.recoveryAmount}</td>
 </tr>`;
     });
 
     html += `
-<tr class="totals">
-  <td colspan="4">TOTAL</td>
-  <td>${totalAmount}</td>
-  <td colspan="6"></td>
-  <td>${totalRecovery}</td>
-  <td colspan="2"></td>
+<tr style="font-weight:bold;background:#222;color:#fff;">
+<td>TOTAL</td>
+<td>${totalAmount}</td>
+<td></td>
+<td>${totalRecovery}</td>
 </tr>
-</table>
-
-</body>
-</html>`;
+</table>`;
 
     res.send(html);
 
   } catch (err) {
-    console.error('ERROR /users/all:', err);
+    console.error(err);
     res.status(500).send('Erreur serveur');
   }
 });
 
-// Vérification code liste
 app.post('/auth/list', (req, res) => {
   if (req.body.code === '147') {
     req.session.listAccess = true;
@@ -222,7 +219,6 @@ app.post('/auth/list', (req, res) => {
   res.redirect('/users/all');
 });
 
-// Quitter liste
 app.post('/logout/list', (req, res) => {
   req.session.listAccess = false;
   res.redirect('/users/all');
@@ -236,7 +232,7 @@ mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
 )
 .then(() => console.log('✅ MongoDB connecté'))
-.catch(err => console.error('❌ MongoDB erreur:', err));
+.catch(err => console.error(err));
 
 const userSchema = new mongoose.Schema({
   senderFirstName: String,

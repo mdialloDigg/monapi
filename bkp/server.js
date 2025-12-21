@@ -61,17 +61,36 @@ app.get('/users', (req, res) => {
 </body></html>
 `);
   }
-  res.redirect('/users/lookup');
+  // Redirige vers la page choix
+  res.redirect('/users/choice');
 });
 
 app.post('/auth/form', (req, res) => {
   if (req.body.code === '123') req.session.formAccess = true;
-  res.redirect('/users');
+  res.redirect('/users/choice');
 });
 
-// Lookup téléphone pour pré-remplissage
+// Page choix : Nouveau / Modifier / Supprimer
+app.get('/users/choice', (req, res) => {
+  if (!req.session.formAccess) return res.redirect('/users');
+
+  res.send(`
+<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
+<h2>📋 Gestion des transferts</h2>
+<a href="/users/form?mode=new"><button style="padding:10px;margin:5px;background:#007bff;color:white;">💾 Nouveau transfert</button></a><br>
+<a href="/users/lookup?mode=edit"><button style="padding:10px;margin:5px;background:#28a745;color:white;">✏️ Modifier transfert</button></a><br>
+<a href="/users/lookup?mode=delete"><button style="padding:10px;margin:5px;background:#dc3545;color:white;">❌ Supprimer transfert</button></a><br>
+<br><a href="/logout/form">🚪 Déconnexion</a>
+</body></html>
+`);
+});
+
+// Lookup téléphone pour pré-remplissage (edit/delete)
 app.get('/users/lookup', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
+  const mode = req.query.mode || 'edit';
+  req.session.choiceMode = mode; // sauvegarde le mode choisi
+
   res.send(`
 <html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
 <h3>📞 Numéro expéditeur</h3>
@@ -79,7 +98,7 @@ app.get('/users/lookup', (req, res) => {
 <input name="phone" required><br><br>
 <button>Continuer</button>
 </form>
-<br><a href="/logout/form">🚪 Déconnexion</a>
+<br><a href="/users/choice">🔙 Retour</a>
 </body></html>
 `);
 });
@@ -87,11 +106,32 @@ app.get('/users/lookup', (req, res) => {
 app.post('/users/lookup', async (req, res) => {
   const u = await User.findOne({ senderPhone: req.body.phone }).sort({ createdAt: -1 });
   req.session.prefill = u || { senderPhone: req.body.phone };
-  req.session.editId = u ? u._id : null;
+
+  if (req.session.choiceMode === 'new') {
+    req.session.editId = null;
+  } else if (u) {
+    req.session.editId = u._id;
+  } else if (req.session.choiceMode === 'edit') {
+    req.session.editId = null; // aucun transfert à modifier
+  } else if (req.session.choiceMode === 'delete') {
+    if (u) {
+      await User.findByIdAndDelete(u._id);
+      req.session.prefill = null;
+      req.session.editId = null;
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+      ❌ Transfert supprimé<br><br><a href="/users/choice">🔙 Retour</a>
+      </body></html>`);
+    } else {
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+      Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Retour</a>
+      </body></html>`);
+    }
+  }
+
   res.redirect('/users/form');
 });
 
-// Formulaire transfert avec modification et suppression
+// Formulaire transfert
 app.get('/users/form', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
   const u = req.session.prefill || {};
@@ -184,7 +224,7 @@ message.innerText=d.message;
 
 function cancelTransfer(){
 if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
-fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users');
+fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
 }
 </script>
 
@@ -193,7 +233,7 @@ fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users');
 `);
 });
 
-// CRUD uniquement via formulaire
+// CRUD via formulaire
 app.post('/users', async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   await new User({ ...req.body, code, status: 'actif' }).save();
@@ -218,6 +258,7 @@ app.get('/logout/form', (req, res) => {
   req.session.formAccess = false;
   req.session.prefill = null;
   req.session.editId = null;
+  req.session.choiceMode = null;
   res.redirect('/users');
 });
 

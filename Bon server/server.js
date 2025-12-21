@@ -61,17 +61,36 @@ app.get('/users', (req, res) => {
 </body></html>
 `);
   }
-  res.redirect('/users/lookup');
+  // Redirige vers la page choix
+  res.redirect('/users/choice');
 });
 
 app.post('/auth/form', (req, res) => {
   if (req.body.code === '123') req.session.formAccess = true;
-  res.redirect('/users');
+  res.redirect('/users/choice');
 });
 
-// Lookup téléphone
+// Page choix : Nouveau / Modifier / Supprimer
+app.get('/users/choice', (req, res) => {
+  if (!req.session.formAccess) return res.redirect('/users');
+
+  res.send(`
+<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
+<h2>📋 Gestion des transferts</h2>
+<a href="/users/form?mode=new"><button style="padding:10px;margin:5px;background:#007bff;color:white;">💾 Nouveau transfert</button></a><br>
+<a href="/users/lookup?mode=edit"><button style="padding:10px;margin:5px;background:#28a745;color:white;">✏️ Modifier transfert</button></a><br>
+<a href="/users/lookup?mode=delete"><button style="padding:10px;margin:5px;background:#dc3545;color:white;">❌ Supprimer transfert</button></a><br>
+<br><a href="/logout/form">🚪 Déconnexion</a>
+</body></html>
+`);
+});
+
+// Lookup téléphone pour pré-remplissage (edit/delete)
 app.get('/users/lookup', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
+  const mode = req.query.mode || 'edit';
+  req.session.choiceMode = mode; // sauvegarde le mode choisi
+
   res.send(`
 <html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
 <h3>📞 Numéro expéditeur</h3>
@@ -79,7 +98,7 @@ app.get('/users/lookup', (req, res) => {
 <input name="phone" required><br><br>
 <button>Continuer</button>
 </form>
-<br><a href="/logout/form">🚪 Déconnexion</a>
+<br><a href="/users/choice">🔙 Retour</a>
 </body></html>
 `);
 });
@@ -87,7 +106,28 @@ app.get('/users/lookup', (req, res) => {
 app.post('/users/lookup', async (req, res) => {
   const u = await User.findOne({ senderPhone: req.body.phone }).sort({ createdAt: -1 });
   req.session.prefill = u || { senderPhone: req.body.phone };
-  req.session.editId = u ? u._id : null;
+
+  if (req.session.choiceMode === 'new') {
+    req.session.editId = null;
+  } else if (u) {
+    req.session.editId = u._id;
+  } else if (req.session.choiceMode === 'edit') {
+    req.session.editId = null; // aucun transfert à modifier
+  } else if (req.session.choiceMode === 'delete') {
+    if (u) {
+      await User.findByIdAndDelete(u._id);
+      req.session.prefill = null;
+      req.session.editId = null;
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+      ❌ Transfert supprimé<br><br><a href="/users/choice">🔙 Retour</a>
+      </body></html>`);
+    } else {
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+      Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Retour</a>
+      </body></html>`);
+    }
+  }
+
   res.redirect('/users/form');
 });
 
@@ -184,7 +224,7 @@ message.innerText=d.message;
 
 function cancelTransfer(){
 if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
-fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users');
+fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
 }
 </script>
 
@@ -193,7 +233,7 @@ fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users');
 `);
 });
 
-// CRUD
+// CRUD via formulaire
 app.post('/users', async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   await new User({ ...req.body, code, status: 'actif' }).save();
@@ -207,7 +247,6 @@ app.post('/users/update', async (req, res) => {
   res.json({ message: '✏️ Transfert mis à jour' });
 });
 
-// Suppression sécurisée
 app.post('/users/delete', async (req, res) => {
   if (!req.session.editId) return res.status(400).json({ message: 'Aucun transfert sélectionné' });
   await User.findByIdAndDelete(req.session.editId);
@@ -219,6 +258,7 @@ app.get('/logout/form', (req, res) => {
   req.session.formAccess = false;
   req.session.prefill = null;
   req.session.editId = null;
+  req.session.choiceMode = null;
   res.redirect('/users');
 });
 
@@ -265,8 +305,6 @@ th{background:#007bff;color:#fff}
 .sub{background:#ddd;font-weight:bold}
 .total{background:#222;color:#fff;font-weight:bold}
 h3{margin-top:50px;text-align:center;color:#007bff}
-a.button{display:inline-block;padding:3px 7px;background:#28a745;color:#fff;border-radius:3px;text-decoration:none;margin:2px}
-a.delete{background:#dc3545}
 </style>
 </head>
 <body>
@@ -283,7 +321,7 @@ a.delete{background:#dc3545}
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
-<th>Montant reçu</th><th>Code</th><th>Date</th><th>Actions</th>
+<th>Montant reçu</th><th>Code</th><th>Date</th>
 </tr>`;
 
     list.forEach(u => {
@@ -303,10 +341,6 @@ a.delete{background:#dc3545}
 <td>${u.recoveryAmount || 0}</td>
 <td>${u.code || ''}</td>
 <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
-<td>
-<a class="button" href="/users/edit/${u._id}">✏️ Modifier</a>
-<a class="button delete" href="/users/delete/${u._id}" onclick="return confirm('Supprimer ce transfert ?')">❌ Supprimer</a>
-</td>
 </tr>`;
     });
 
@@ -329,24 +363,6 @@ a.delete{background:#dc3545}
 </body></html>`;
 
   res.send(html);
-});
-
-// Edition via liste
-app.get('/users/edit/:id', async (req, res) => {
-  if (!req.session.listAccess) return res.redirect('/users/all');
-  const u = await User.findById(req.params.id);
-  if (!u) return res.send('Transfert introuvable');
-  req.session.prefill = u;
-  req.session.editId = u._id;
-  req.session.formAccess = true; // autorise le formulaire
-  res.redirect('/users/form');
-});
-
-// Suppression via liste sécurisée
-app.get('/users/delete/:id', async (req, res) => {
-  if (!req.session.listAccess) return res.redirect('/users/all');
-  await User.findByIdAndDelete(req.params.id);
-  res.redirect('/users/all');
 });
 
 app.post('/auth/list', (req, res) => {

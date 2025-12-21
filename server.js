@@ -46,222 +46,6 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-/* ================= ROUTES ================= */
-
-// Accès formulaire
-app.get('/users', (req, res) => {
-  if (!req.session.formAccess) {
-    return res.send(`
-<html><body style="font-family:Arial;text-align:center;padding-top:60px">
-<h2>🔒 Accès formulaire</h2>
-<form method="post" action="/auth/form">
-<input type="password" name="code" placeholder="Code 123" required><br><br>
-<button>Valider</button>
-</form>
-</body></html>
-`);
-  }
-  // Redirige vers la page choix
-  res.redirect('/users/choice');
-});
-
-app.post('/auth/form', (req, res) => {
-  if (req.body.code === '123') req.session.formAccess = true;
-  res.redirect('/users/choice');
-});
-
-// Page choix : Nouveau / Modifier / Supprimer
-app.get('/users/choice', (req, res) => {
-  if (!req.session.formAccess) return res.redirect('/users');
-
-  res.send(`
-<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
-<h2>📋 Gestion des transferts</h2>
-<a href="/users/form?mode=new"><button style="padding:10px;margin:5px;background:#007bff;color:white;">💾 Nouveau transfert</button></a><br>
-<a href="/users/lookup?mode=edit"><button style="padding:10px;margin:5px;background:#28a745;color:white;">✏️ Modifier transfert</button></a><br>
-<a href="/users/lookup?mode=delete"><button style="padding:10px;margin:5px;background:#dc3545;color:white;">❌ Supprimer transfert</button></a><br>
-<br><a href="/logout/form">🚪 Déconnexion</a>
-</body></html>
-`);
-});
-
-// Lookup téléphone pour pré-remplissage (edit/delete)
-app.get('/users/lookup', (req, res) => {
-  if (!req.session.formAccess) return res.redirect('/users');
-  const mode = req.query.mode || 'edit';
-  req.session.choiceMode = mode; // sauvegarde le mode choisi
-
-  res.send(`
-<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
-<h3>📞 Numéro expéditeur</h3>
-<form method="post" action="/users/lookup">
-<input name="phone" required><br><br>
-<button>Continuer</button>
-</form>
-<br><a href="/users/choice">🔙 Retour</a>
-</body></html>
-`);
-});
-
-app.post('/users/lookup', async (req, res) => {
-  const u = await User.findOne({ senderPhone: req.body.phone }).sort({ createdAt: -1 });
-  req.session.prefill = u || { senderPhone: req.body.phone };
-
-  if (req.session.choiceMode === 'new') {
-    req.session.editId = null;
-  } else if (u) {
-    req.session.editId = u._id;
-  } else if (req.session.choiceMode === 'edit') {
-    req.session.editId = null; // aucun transfert à modifier
-  } else if (req.session.choiceMode === 'delete') {
-    if (u) {
-      await User.findByIdAndDelete(u._id);
-      req.session.prefill = null;
-      req.session.editId = null;
-      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
-      ❌ Transfert supprimé<br><br><a href="/users/choice">🔙 Retour</a>
-      </body></html>`);
-    } else {
-      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
-      Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Retour</a>
-      </body></html>`);
-    }
-  }
-
-  res.redirect('/users/form');
-});
-
-// Formulaire transfert
-app.get('/users/form', (req, res) => {
-  if (!req.session.formAccess) return res.redirect('/users');
-  const u = req.session.prefill || {};
-  const isEdit = !!req.session.editId;
-
-  res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-body{font-family:Arial;background:#dde5f0}
-form{background:#fff;max-width:950px;margin:20px auto;padding:15px;border-radius:8px}
-.container{display:flex;flex-wrap:wrap;gap:15px}
-.box{flex:1;min-width:260px;padding:15px;border-radius:6px}
-.origin{background:#e3f0ff}
-.dest{background:#ffe3e3}
-input,select,button{width:100%;padding:9px;margin-top:8px}
-button{border:none;color:#fff;font-size:15px}
-#save{background:#007bff}
-#cancel{background:#dc3545}
-#logout{background:#6c757d}
-</style>
-</head>
-<body>
-
-<form id="form">
-<h3 style="text-align:center">${isEdit ? '✏️ Modifier transfert' : '💸 Nouveau transfert'}</h3>
-
-<div class="container">
-<div class="box origin">
-<h4>📤 Expéditeur</h4>
-<input id="senderFirstName" value="${u.senderFirstName||''}" placeholder="Prénom">
-<input id="senderLastName" value="${u.senderLastName||''}" placeholder="Nom">
-<input id="senderPhone" value="${u.senderPhone||''}" required placeholder="Téléphone">
-<select id="originLocation">
-${['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'].map(v=>`<option ${u.originLocation===v?'selected':''}>${v}</option>`).join('')}
-</select>
-<input id="amount" type="number" value="${u.amount||''}" placeholder="Montant">
-<input id="fees" type="number" value="${u.fees||''}" placeholder="Frais">
-<input id="feePercent" type="number" value="${u.feePercent||''}" placeholder="% Frais">
-</div>
-
-<div class="box dest">
-<h4>📥 Destinataire</h4>
-<input id="receiverFirstName" value="${u.receiverFirstName||''}" placeholder="Prénom">
-<input id="receiverLastName" value="${u.receiverLastName||''}" placeholder="Nom">
-<input id="receiverPhone" value="${u.receiverPhone||''}" placeholder="Téléphone">
-<select id="destinationLocation">
-${['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'].map(v=>`<option ${u.destinationLocation===v?'selected':''}>${v}</option>`).join('')}
-</select>
-<input id="recoveryAmount" type="number" value="${u.recoveryAmount||''}" placeholder="Montant reçu">
-<select id="recoveryMode">
-<option ${u.recoveryMode==='Espèces'?'selected':''}>Espèces</option>
-<option ${u.recoveryMode==='Orange Money'?'selected':''}>Orange Money</option>
-<option ${u.recoveryMode==='Wave'?'selected':''}>Wave</option>
-</select>
-</div>
-</div>
-
-<button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
-${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Supprimer</button>':''}
-<button type="button" id="logout" onclick="location.href=\'/logout/form\'">🚪 Déconnexion</button>
-<p id="message"></p>
-</form>
-
-<script>
-form.onsubmit=async e=>{
-e.preventDefault();
-const url='${isEdit?'/users/update':'/users'}';
-const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify({
-senderFirstName:senderFirstName.value,
-senderLastName:senderLastName.value,
-senderPhone:senderPhone.value,
-originLocation:originLocation.value,
-amount:+amount.value,
-fees:+fees.value,
-feePercent:+feePercent.value,
-receiverFirstName:receiverFirstName.value,
-receiverLastName:receiverLastName.value,
-receiverPhone:receiverPhone.value,
-destinationLocation:destinationLocation.value,
-recoveryAmount:+recoveryAmount.value,
-recoveryMode:recoveryMode.value
-})});
-const d=await r.json();
-message.innerText=d.message;
-};
-
-function cancelTransfer(){
-if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
-fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
-}
-</script>
-
-</body>
-</html>
-`);
-});
-
-// CRUD via formulaire
-app.post('/users', async (req, res) => {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  await new User({ ...req.body, code, status: 'actif' }).save();
-  res.json({ message: '✅ Transfert enregistré | Code ' + code });
-});
-
-app.post('/users/update', async (req, res) => {
-  if (!req.session.editId) return res.status(400).json({ message: 'Aucun transfert sélectionné' });
-  await User.findByIdAndUpdate(req.session.editId, req.body);
-  req.session.editId = null;
-  res.json({ message: '✏️ Transfert mis à jour' });
-});
-
-app.post('/users/delete', async (req, res) => {
-  if (!req.session.editId) return res.status(400).json({ message: 'Aucun transfert sélectionné' });
-  await User.findByIdAndDelete(req.session.editId);
-  req.session.editId = null;
-  res.json({ message: '❌ Transfert supprimé' });
-});
-
-app.get('/logout/form', (req, res) => {
-  req.session.formAccess = false;
-  req.session.prefill = null;
-  req.session.editId = null;
-  req.session.choiceMode = null;
-  res.redirect('/users');
-});
-
 /* ================= LISTE DES TRANSFERTS ================= */
 app.get('/users/all', async (req, res) => {
   if (!req.session.listAccess) {
@@ -305,10 +89,26 @@ th{background:#007bff;color:#fff}
 .sub{background:#ddd;font-weight:bold}
 .total{background:#222;color:#fff;font-weight:bold}
 h3{margin-top:50px;text-align:center;color:#007bff}
+button.retirer{padding:5px 10px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer}
 </style>
 </head>
 <body>
 <h2>📋 Liste de tous les transferts groupés par destination</h2>
+<script>
+async function retirer(id){
+  let mode = prompt("Mode de retrait : Espèces, Orange Money, Produit, Service");
+  if(!mode) return;
+  mode = mode.trim();
+  if(!["Espèces","Orange Money","Produit","Service"].includes(mode)){
+    alert("Mode invalide !");
+    return;
+  }
+  const res = await fetch("/users/retirer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id, mode})});
+  const data = await res.json();
+  alert(data.message);
+  location.reload();
+}
+</script>
 `;
 
   for (let dest in grouped) {
@@ -321,7 +121,7 @@ h3{margin-top:50px;text-align:center;color:#007bff}
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
-<th>Montant reçu</th><th>Code</th><th>Date</th>
+<th>Montant reçu</th><th>Code</th><th>Date</th><th>Action</th>
 </tr>`;
 
     list.forEach(u => {
@@ -341,6 +141,7 @@ h3{margin-top:50px;text-align:center;color:#007bff}
 <td>${u.recoveryAmount || 0}</td>
 <td>${u.code || ''}</td>
 <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
+<td><button class="retirer" onclick="retirer('${u._id}')">💰 Retirer</button></td>
 </tr>`;
     });
 
@@ -348,7 +149,7 @@ h3{margin-top:50px;text-align:center;color:#007bff}
 <td colspan="3">Sous-total ${dest}</td>
 <td>${subAmount}</td><td>${subFees}</td>
 <td colspan="2"></td><td></td>
-<td>${subRecovery}</td><td colspan="2"></td>
+<td>${subRecovery}</td><td colspan="2"></td><td></td>
 </tr></table>`;
   }
 
@@ -357,7 +158,7 @@ h3{margin-top:50px;text-align:center;color:#007bff}
 <td>${totalAmount}</td>
 <td>${totalFees}</td>
 <td colspan="2"></td><td></td>
-<td>${totalRecovery}</td><td colspan="2"></td>
+<td>${totalRecovery}</td><td colspan="2"></td><td></td>
 </tr></table>
 <br><center><a href="/logout/list">🚪 Déconnexion</a></center>
 </body></html>`;
@@ -365,11 +166,22 @@ h3{margin-top:50px;text-align:center;color:#007bff}
   res.send(html);
 });
 
+// Endpoint retirer
+app.post('/users/retirer', async (req, res) => {
+  const { id, mode } = req.body;
+  if (!["Espèces","Orange Money","Produit","Service"].includes(mode)) {
+    return res.status(400).json({ message: "Mode invalide" });
+  }
+  await User.findByIdAndUpdate(id, { recoveryMode: mode });
+  res.json({ message: `💰 Retrait effectué via ${mode}` });
+});
+
+/* ================= AUTRES ROUTES ET LOGIN ================= */
+// Code 147 pour liste
 app.post('/auth/list', (req, res) => {
   if (req.body.code === '147') req.session.listAccess = true;
   res.redirect('/users/all');
 });
-
 app.get('/logout/list', (req, res) => {
   req.session.listAccess = false;
   res.redirect('/users/all');

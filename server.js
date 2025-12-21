@@ -362,11 +362,4 @@ app.get('/users/export/csv', async (req,res)=>{
   res.send(csv);
 });
 
-/* ================= EXPORT PDF ================= */
-app.get('/users/export/pdf', async (req,res)=>{
-  const users = await User.find({});
-  const doc = new PDFDocument({margin:30});
-  res.setHeader('Content-Disposition','attachment; filename="transferts.pdf"');
-  res.setHeader('Content-Type','application/pdf');
-  doc.pipe(res);
 

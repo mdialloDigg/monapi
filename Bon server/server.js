@@ -68,15 +68,6 @@ app.post('/auth/form',(req,res)=>{
 });
 
 /* ================= AUTH LIST ================= */
-app.get('/auth/list', (req,res)=>{
-  res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
-<h2>🔒 Accès liste</h2>
-<form method="post" action="/auth/list">
-<input type="password" name="code" placeholder="Code 147" required><br><br>
-<button>Valider</button>
-</form></body></html>`);
-});
-
 app.post('/auth/list', (req, res) => {
   const code = req.body.code;
   if (code === '147') {
@@ -85,7 +76,7 @@ app.post('/auth/list', (req, res) => {
   } else {
     res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
 <h2>🔒 Code incorrect</h2>
-<a href="/auth/list">🔙 Retour</a>
+<a href="/users/all">🔙 Retour</a>
 </body></html>`);
   }
 });
@@ -145,7 +136,7 @@ Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Reto
   res.redirect('/users/form');
 });
 
-/* ================= FORMULAIRE TRANSFERT (avec calcul automatique) ================= */
+/* ================= FORMULAIRE TRANSFERT ================= */
 app.get('/users/form', (req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
   const u=req.session.prefill||{};
@@ -198,41 +189,41 @@ button{border:none;color:white;font-size:15px;border-radius:5px;cursor:pointer}
 </div>
 <button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
 ${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Supprimer</button>':''}
-<button type="button" id="logout" onclick="location.href='/logout/form'">🚪 Déconnexion</button>
+<button type="button" id="logout" onclick="location.href=\'/logout/form\'">🚪 Déconnexion</button>
 <p id="message"></p>
 </form>
 <script>
-function calculateRecovery(){
-  const amt = parseFloat(amount.value)||0;
-  const fee = parseFloat(fees.value)||0;
-  recoveryAmount.value = amt - fee;
+// Calcul automatique du montant reçu
+function calcRecovery(){
+  const amt = parseFloat(document.getElementById('amount').value)||0;
+  const fees = parseFloat(document.getElementById('fees').value)||0;
+  document.getElementById('recoveryAmount').value = amt - fees;
 }
-amount.addEventListener('input', calculateRecovery);
-fees.addEventListener('input', calculateRecovery);
+document.getElementById('amount').addEventListener('input',calcRecovery);
+document.getElementById('fees').addEventListener('input',calcRecovery);
 
 form.onsubmit=async e=>{
   e.preventDefault();
   const url='${isEdit?'/users/update':'/users'}';
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({
-    senderFirstName:senderFirstName.value,
-    senderLastName:senderLastName.value,
-    senderPhone:senderPhone.value,
-    originLocation:originLocation.value,
-    amount:+amount.value,
-    fees:+fees.value,
-    feePercent:+feePercent.value,
-    receiverFirstName:receiverFirstName.value,
-    receiverLastName:receiverLastName.value,
-    receiverPhone:receiverPhone.value,
-    destinationLocation:destinationLocation.value,
-    recoveryAmount:+recoveryAmount.value,
-    recoveryMode:recoveryMode.value
-  })});
+    body:JSON.stringify({
+      senderFirstName:senderFirstName.value,
+      senderLastName:senderLastName.value,
+      senderPhone:senderPhone.value,
+      originLocation:originLocation.value,
+      amount:+amount.value,
+      fees:+fees.value,
+      feePercent:+feePercent.value,
+      receiverFirstName:receiverFirstName.value,
+      receiverLastName:receiverLastName.value,
+      receiverPhone:receiverPhone.value,
+      destinationLocation:destinationLocation.value,
+      recoveryAmount:+recoveryAmount.value,
+      recoveryMode:recoveryMode.value
+    })});
   const d=await r.json();
   message.innerText=d.message;
 };
-
 function cancelTransfer(){
   if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
   fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
@@ -262,7 +253,6 @@ app.post('/users/delete', async (req,res)=>{
   res.json({message:'❌ Transfert supprimé'});
 });
 
-/* ================= LOGOUT ================= */
 app.get('/logout/form',(req,res)=>{
   req.session.formAccess=false;
   req.session.prefill=null;
@@ -272,13 +262,20 @@ app.get('/logout/form',(req,res)=>{
 });
 
 app.get('/logout/list',(req,res)=>{
-  req.session.listAccess=false;
-  res.redirect('/users/all');
+    req.session.listAccess=false;
+    res.redirect('/users/all');
 });
 
 /* ================= LISTE DES TRANSFERTS ================= */
 app.get('/users/all', async (req,res)=>{
-  if(!req.session.listAccess) return res.redirect('/auth/list');
+  if(!req.session.listAccess){
+    return res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
+<h2>🔒 Accès liste</h2>
+<form method="post" action="/auth/list">
+<input type="password" name="code" placeholder="Code 147" required><br><br>
+<button>Valider</button>
+</form></body></html>`);
+  }
 
   const users=await User.find({}).sort({ destinationLocation:1, createdAt:1 });
   const grouped={};
@@ -287,9 +284,9 @@ app.get('/users/all', async (req,res)=>{
   users.forEach(u=>{
     if(!grouped[u.destinationLocation]) grouped[u.destinationLocation]=[];
     grouped[u.destinationLocation].push(u);
-    totalAmount += (u.amount||0);
-    totalRecovery += (u.recoveryAmount||0);
-    totalFees += (u.fees||0);
+    totalAmount+=(u.amount||0);
+    totalRecovery+=(u.recoveryAmount||0);
+    totalFees+=(u.fees||0);
   });
 
   let html=`<html><head>
@@ -304,6 +301,7 @@ th{background:#007bff;color:#fff}
 .dest{background:#ffe3e3}
 .sub{background:#ddd;font-weight:bold}
 .total{background:#222;color:#fff;font-weight:bold}
+.retiré{background:orange !important;color:#000}
 h3{margin-top:50px;text-align:center;color:#007bff}
 button.retirer,button.export{padding:5px 10px;border:none;border-radius:4px;cursor:pointer}
 button.retirer{background:#28a745;color:#fff} button.export{background:#007bff;color:#fff;margin:5px}
@@ -314,27 +312,71 @@ button.retirer{background:#28a745;color:#fff} button.export{background:#007bff;c
 <br><center><button id="logoutBtn">🚪 Déconnexion</button></center>
 <script>
 async function retirer(id,row){
-    const mode = prompt("Mode de retrait (Espèces / Orange Money / Produit / Service)","");
-    if(!mode) return;
+  if(row.classList.contains('retiré')) return;
+
+  const div = document.createElement('div');
+  div.style.position='fixed';
+  div.style.top='0'; div.style.left='0';
+  div.style.width='100%'; div.style.height='100%';
+  div.style.backgroundColor='rgba(0,0,0,0.5)';
+  div.style.display='flex';
+  div.style.justifyContent='center';
+  div.style.alignItems='center';
+  div.style.zIndex=9999;
+
+  const selDiv = document.createElement('div');
+  selDiv.style.background='#fff';
+  selDiv.style.padding='20px';
+  selDiv.style.borderRadius='8px';
+  selDiv.innerHTML = \`
+    <h3>Mode de retrait</h3>
+    <select id="modeSelect">
+      <option value="">-- Choisir --</option>
+      <option value="Espèces">Espèces</option>
+      <option value="Orange Money">Orange Money</option>
+      <option value="Produit">Produit</option>
+      <option value="Service">Service</option>
+    </select>
+    <br><br>
+    <button id="confirmRetrait">Valider</button>
+    <button id="cancelRetrait">Annuler</button>
+  \`;
+  div.appendChild(selDiv);
+  document.body.appendChild(div);
+
+  document.getElementById('cancelRetrait').onclick = () => div.remove();
+  document.getElementById('confirmRetrait').onclick = async () => {
+    const mode = document.getElementById('modeSelect').value;
+    if(!mode){ alert('Veuillez choisir un mode !'); return; }
+
     const res = await fetch("/users/retirer", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({id, mode})
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({id, mode})
     });
     const data = await res.json();
     alert(data.message);
-    // couleur orange + texte
-    row.style.backgroundColor = 'orange';
-    row.cells[8].innerText = row.cells[3].innerText - row.cells[4].innerText; // montant reçu
-}
-document.getElementById('logoutBtn').onclick = () => fetch('/logout/list').then(()=>location.href='/users/all');
-function exportPDF(){window.open("/users/export/pdf","_blank")}
-</script>`;
 
-  for(let dest in grouped){
-    const list=grouped[dest];
-    let subAmount=0,subRecovery=0,subFees=0;
-    html+=`<h3>Destination: ${dest}</h3>
+    row.classList.add('retiré');
+    row.cells[8].innerText = data.recoveryAmount;
+    row.cells[11].innerText = "Montant retiré";
+
+    div.remove();
+  }
+}
+
+document.getElementById('logoutBtn').onclick = () => {
+    fetch('/logout/list').then(()=>location.href='/users/all');
+}
+
+function exportPDF(){window.open("/users/export/pdf","_blank")}
+</script>
+`;
+
+for(let dest in grouped){
+  const list=grouped[dest];
+  let subAmount=0,subRecovery=0,subFees=0;
+  html+=`<h3>Destination: ${dest}</h3>
 <table>
 <tr>
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
@@ -342,9 +384,9 @@ function exportPDF(){window.open("/users/export/pdf","_blank")}
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
 <th>Montant reçu</th><th>Code</th><th>Date</th><th>Action</th>
 </tr>`;
-    list.forEach(u=>{
-      subAmount+=(u.amount||0); subRecovery+=(u.recoveryAmount||0); subFees+=(u.fees||0);
-      html+=`<tr>
+  list.forEach(u=>{
+    subAmount+=(u.amount||0); subRecovery+=(u.recoveryAmount||0); subFees+=(u.fees||0);
+    html+=`<tr>
 <td>${u.senderFirstName||''} ${u.senderLastName||''}</td>
 <td>${u.senderPhone||''}</td>
 <td class="origin">${u.originLocation||''}</td>
@@ -356,18 +398,18 @@ function exportPDF(){window.open("/users/export/pdf","_blank")}
 <td>${u.recoveryAmount||0}</td>
 <td>${u.code||''}</td>
 <td>${u.createdAt?new Date(u.createdAt).toLocaleString():''}</td>
-<td><button class="retirer" onclick="retirer('${u._id}', this.parentNode)">💰 Retirer</button></td>
+<td><button class="retirer" onclick="retirer('${u._id}',this.parentElement.parentElement)">💰 Retirer</button></td>
 </tr>`;
-    });
-    html+=`<tr class="sub">
+  });
+  html+=`<tr class="sub">
 <td colspan="3">Sous-total ${dest}</td>
 <td>${subAmount}</td><td>${subFees}</td>
 <td colspan="2"></td><td></td>
 <td>${subRecovery}</td><td colspan="2"></td><td></td>
 </tr></table>`;
-  }
+}
 
-  html+=`<table><tr class="total">
+html+=`<table><tr class="total">
 <td colspan="3">TOTAL GÉNÉRAL</td>
 <td>${totalAmount}</td><td>${totalFees}</td>
 <td colspan="2"></td><td></td>
@@ -375,15 +417,19 @@ function exportPDF(){window.open("/users/export/pdf","_blank")}
 </tr></table>
 </body></html>`;
 
-  res.send(html);
+res.send(html);
 });
 
 /* ================= RETRAIT ================= */
 app.post('/users/retirer', async (req,res)=>{
   const {id,mode}=req.body;
   if(!["Espèces","Orange Money","Produit","Service"].includes(mode)) return res.status(400).json({message:"Mode invalide"});
-  await User.findByIdAndUpdate(id,{recoveryMode:mode,$push:{retraitHistory:{date:new Date(),mode}}});
-  res.json({message:`💰 Retrait effectué via ${mode}`});
+  const user = await User.findById(id);
+  if(!user) return res.status(404).json({message:"Transfert introuvable"});
+  user.recoveryMode=mode;
+  user.retraitHistory.push({date:new Date(),mode});
+  await user.save();
+  res.json({message:`💰 Retrait effectué via ${mode}`, recoveryAmount: user.amount - user.fees});
 });
 
 /* ================= EXPORT PDF ================= */

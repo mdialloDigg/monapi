@@ -67,6 +67,20 @@ app.post('/auth/form',(req,res)=>{
   res.redirect('/users/choice');
 });
 
+/* ================= AUTH LIST ================= */
+app.post('/auth/list', (req, res) => {
+  const code = req.body.code;
+  if (code === '147') {
+    req.session.listAccess = true;
+    res.redirect('/users/all');
+  } else {
+    res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
+<h2>🔒 Code incorrect</h2>
+<a href="/users/all">🔙 Retour</a>
+</body></html>`);
+  }
+});
+
 /* ================= PAGE CHOIX ================= */
 app.get('/users/choice',(req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');

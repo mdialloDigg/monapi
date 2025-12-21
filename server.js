@@ -1,13 +1,23 @@
 /* ================= RETRAIT ================= */
 app.post('/users/retirer', async (req,res)=>{
-  const {id,mode}=req.body;
+  const {id,mode} = req.body;
   if(!["Espèces","Orange Money","Produit","Service"].includes(mode)) 
     return res.status(400).json({message:"Mode invalide"});
-  await User.findByIdAndUpdate(id,{
+  
+  // Mettre à jour le mode de retrait et calculer le montant reçu
+  const user = await User.findById(id);
+  if(!user) return res.status(404).json({message:"Transfert introuvable"});
+  
+  const recoveryAmount = (user.amount || 0) - (user.fees || 0);
+
+  await User.findByIdAndUpdate(id, {
     recoveryMode: mode,
-    $push:{retraitHistory:{date:new Date(),mode}}
+    recoveryAmount,
+    status: "retiré",
+    $push: { retraitHistory: { date: new Date(), mode } }
   });
-  res.json({message:`💰 Retrait effectué via ${mode}`});
+
+  res.json({message:`💰 Retrait effectué via ${mode}`, recoveryAmount});
 });
 
 /* ================= LISTE DES TRANSFERTS ================= */
@@ -43,6 +53,7 @@ button.retirer,button.export{padding:5px 10px;border:none;border-radius:4px;curs
 button.retirer{background:#28a745;color:#fff} 
 button.export{background:#007bff;color:#fff;margin:5px}
 select{padding:4px;font-size:13px}
+.retiré{background:orange !important;color:#fff !important;}
 @media(max-width:600px){table,th,td{font-size:12px;padding:4px}}
 </style></head><body>
 <h2>📋 Liste de tous les transferts groupés par destination</h2>
@@ -53,9 +64,10 @@ document.getElementById('logoutBtn').onclick = () => fetch('/logout/list').then(
 function exportPDF(){window.open("/users/export/pdf","_blank")}
 
 async function retirer(id,row){
+  if(row.classList.contains('retiré')) return;
   // créer div modal
   const div = document.createElement('div');
-  div.style.position = 'fixed';
+  div.style.position='fixed';
   div.style.top='0'; div.style.left='0';
   div.style.width='100%'; div.style.height='100%';
   div.style.backgroundColor='rgba(0,0,0,0.5)';
@@ -86,6 +98,7 @@ async function retirer(id,row){
   document.getElementById('confirmRetrait').onclick = async () => {
     const mode = document.getElementById('modeSelect').value;
     if(!mode){ alert('Veuillez choisir un mode !'); return; }
+
     const res = await fetch("/users/retirer", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -93,10 +106,13 @@ async function retirer(id,row){
     });
     const data = await res.json();
     alert(data.message);
+
     div.remove();
-    // changer couleur ligne + mettre montant reçu
-    row.style.backgroundColor='orange';
-    row.cells[8].innerText = row.cells[3].innerText - row.cells[4].innerText;
+
+    // ligne devient orange et bouton remplacé
+    row.classList.add('retiré');
+    row.cells[8].innerText = data.recoveryAmount; // montant reçu
+    row.cells[11].innerText = "Montant retiré"; // bouton remplacé
   }
 }
 </script>`;
@@ -114,7 +130,7 @@ async function retirer(id,row){
 </tr>`;
     list.forEach(u=>{
       subAmount += (u.amount||0); subRecovery += (u.recoveryAmount||0); subFees += (u.fees||0);
-      html+=`<tr>
+      html+=`<tr ${u.status==='retiré' ? 'class="retiré"' : ''}>
 <td>${u.senderFirstName||''} ${u.senderLastName||''}</td>
 <td>${u.senderPhone||''}</td>
 <td class="origin">${u.originLocation||''}</td>
@@ -126,7 +142,7 @@ async function retirer(id,row){
 <td>${u.recoveryAmount||0}</td>
 <td>${u.code||''}</td>
 <td>${u.createdAt?new Date(u.createdAt).toLocaleString():''}</td>
-<td><button class="retirer" onclick="retirer('${u._id}', this.parentNode)">💰 Retirer</button></td>
+<td>${u.status==='retiré' ? 'Montant retiré' : `<button class="retirer" onclick="retirer('${u._id}', this.parentNode)">💰 Retirer</button>`}</td>
 </tr>`;
     });
     html+=`<tr class="sub">

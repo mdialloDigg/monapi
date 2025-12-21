@@ -20,117 +20,124 @@ app.use(session({
 /* ================= MONGODB ================= */
 mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
-).then(()=>console.log('✅ MongoDB connecté'))
- .catch(console.error);
+).then(() => console.log('✅ MongoDB connecté'))
+.catch(console.error);
 
 /* ================= SCHEMA ================= */
 const userSchema = new mongoose.Schema({
-  senderFirstName:String,
-  senderLastName:String,
-  senderPhone:String,
-  originLocation:String,
-  amount:Number,
-  feePercent:Number,
-  fees:Number,
-  receiverFirstName:String,
-  receiverLastName:String,
-  receiverPhone:String,
-  destinationLocation:String,
-  recoveryAmount:Number,
-  recoveryMode:String,
-  code:String,
-  retired:{type:Boolean,default:false},
-  retraitHistory:[{date:Date,mode:String}],
-  createdAt:{type:Date,default:Date.now}
+  senderFirstName: String,
+  senderLastName: String,
+  senderPhone: String,
+  originLocation: String,
+  amount: Number,
+  fees: Number,
+  feePercent: Number,
+  receiverFirstName: String,
+  receiverLastName: String,
+  receiverPhone: String,
+  destinationLocation: String,
+  recoveryAmount: Number,
+  recoveryMode: String,
+  code: String,
+  retired: { type: Boolean, default: false },
+  retraitHistory: [{ date: Date, mode: String }],
+  createdAt: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);
 
 /* ================= HOME ================= */
-app.get('/', (req,res)=>{
-  res.send('🚀 API Transfert en ligne');
-});
+app.get('/', (req,res)=>res.send('🚀 API Transfert en ligne'));
 
 /* ================= FORMULAIRE ================= */
 app.get('/users/form',(req,res)=>{
-const u=req.session.prefill||{};
+const u = req.session.prefill || {};
+const locations=['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'];
+
 res.send(`<!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{font-family:Arial;background:#f2f4f8;margin:0}
-form{background:#fff;max-width:480px;margin:10px auto;padding:15px;border-radius:10px}
-input,select,button{width:100%;padding:12px;margin:6px 0;font-size:16px}
-button{border:none;color:white;border-radius:6px}
-#save{background:#007bff}
-.box{background:#eef3ff;padding:10px;border-radius:8px;margin-bottom:10px}
-.orange{background:#ffe5cc}
+body{font-family:Arial;background:#dde5f0;margin:0}
+form{background:#fff;max-width:950px;margin:20px auto;padding:15px;border-radius:8px}
+.container{display:flex;flex-wrap:wrap;gap:15px}
+.box{flex:1;min-width:250px;padding:10px;border-radius:6px}
+.origin{background:#e3f0ff}
+.dest{background:#ffe3e3}
+input,select,button{width:100%;padding:9px;margin-top:8px;font-size:14px}
+button{border:none;color:white;font-size:15px;border-radius:5px;cursor:pointer}
+#save{background:#007bff} #logout{background:#6c757d}
+@media(max-width:600px){.container{flex-direction:column}}
 </style>
 </head>
 <body>
+
 <form id="form">
 <h3 style="text-align:center">💸 Nouveau transfert</h3>
 
-<div class="box">
-<input id="senderFirstName" placeholder="Prénom expéditeur">
-<input id="senderLastName" placeholder="Nom expéditeur">
-<input id="senderPhone" placeholder="Téléphone expéditeur" required>
+<div class="container">
+<div class="box origin">
+<h4>📤 Expéditeur</h4>
+<input id="senderFirstName" value="${u.senderFirstName||''}" placeholder="Prénom">
+<input id="senderLastName" value="${u.senderLastName||''}" placeholder="Nom">
+<input id="senderPhone" value="${u.senderPhone||''}" placeholder="Téléphone">
 <select id="originLocation">
-<option>France</option><option>Belgique</option><option>Conakry</option>
+${locations.map(v=>`<option ${u.originLocation===v?'selected':''}>${v}</option>`).join('')}
 </select>
+<input id="amount" type="number" value="${u.amount||''}" placeholder="Montant origine">
+<input id="feePercent" type="number" value="${u.feePercent||''}" placeholder="% Frais">
+<input id="fees" type="number" value="${u.fees||''}" placeholder="Frais">
 </div>
 
-<div class="box">
-<input id="amount" type="number" placeholder="Montant">
-<input id="feePercent" type="number" placeholder="% Frais">
-<input id="fees" placeholder="Frais" readonly>
-</div>
-
-<div class="box orange">
-<input id="receiverFirstName" placeholder="Prénom destinataire">
-<input id="receiverLastName" placeholder="Nom destinataire">
-<input id="receiverPhone" placeholder="Téléphone destinataire">
+<div class="box dest">
+<h4>📥 Destinataire</h4>
+<input id="receiverFirstName" value="${u.receiverFirstName||''}" placeholder="Prénom">
+<input id="receiverLastName" value="${u.receiverLastName||''}" placeholder="Nom">
+<input id="receiverPhone" value="${u.receiverPhone||''}" placeholder="Téléphone">
 <select id="destinationLocation">
-<option>Labé</option><option>Conakry</option><option>France</option>
+${locations.map(v=>`<option ${u.destinationLocation===v?'selected':''}>${v}</option>`).join('')}
 </select>
-<input id="recoveryAmount" placeholder="Montant reçu" readonly>
+<input id="recoveryAmount" type="number" value="${u.recoveryAmount||''}" placeholder="Montant destination" readonly>
+</div>
 </div>
 
 <button id="save">💾 Enregistrer</button>
+<button type="button" id="logout" onclick="location.href='/'">🚪 Déconnexion</button>
 <p id="message"></p>
 </form>
 
 <script>
-function calc(){
- let m=+amount.value||0;
- let p=+feePercent.value||0;
- let f=m*p/100;
- fees.value=f.toFixed(2);
- recoveryAmount.value=(m-f).toFixed(2);
+function calcul(){
+  const montant = parseFloat(amount.value)||0;
+  const percent = parseFloat(feePercent.value)||0;
+  const fraisCalc = montant * percent / 100;
+  fees.value = fraisCalc.toFixed(2);
+  recoveryAmount.value = (montant - fraisCalc).toFixed(2);
 }
-amount.oninput=calc;
-feePercent.oninput=calc;
 
-form.onsubmit=async e=>{
- e.preventDefault();
- const r=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},
- body:JSON.stringify({
- senderFirstName:senderFirstName.value,
- senderLastName:senderLastName.value,
- senderPhone:senderPhone.value,
- originLocation:originLocation.value,
- amount:+amount.value,
- feePercent:+feePercent.value,
- fees:+fees.value,
- receiverFirstName:receiverFirstName.value,
- receiverLastName:receiverLastName.value,
- receiverPhone:receiverPhone.value,
- destinationLocation:destinationLocation.value,
- recoveryAmount:+recoveryAmount.value
- })});
- const d=await r.json();
- message.innerText=d.message;
+amount.oninput = calcul;
+feePercent.oninput = calcul;
+
+form.onsubmit = async e=>{
+e.preventDefault();
+const r = await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({
+senderFirstName:senderFirstName.value,
+senderLastName:senderLastName.value,
+senderPhone:senderPhone.value,
+originLocation:originLocation.value,
+amount:+amount.value,
+fees:+fees.value,
+feePercent:+feePercent.value,
+receiverFirstName:receiverFirstName.value,
+receiverLastName:receiverLastName.value,
+receiverPhone:receiverPhone.value,
+destinationLocation:destinationLocation.value,
+recoveryAmount:+recoveryAmount.value
+})});
+const d = await r.json();
+message.innerText = d.message;
 };
 </script>
 </body></html>`);
@@ -145,36 +152,37 @@ res.json({message:'✅ Transfert enregistré | Code '+code});
 
 /* ================= LISTE ================= */
 app.get('/users/all', async (req,res)=>{
-const users=await User.find({});
-let html=`<html><body style="font-family:Arial">
+const users=await User.find({}).sort({createdAt:-1});
+let html=`<html><body style="font-family:Arial;background:#f4f6f9">
 <h2 style="text-align:center">📋 Liste des transferts</h2>
-<table border="1" width="100%" cellpadding="5">
-<tr><th>Expéditeur</th><th>Montant</th><th>Destinataire</th><th>Reçu</th><th>Action</th></tr>`;
+<table width="100%" border="1" cellspacing="0" cellpadding="5">
+<tr style="background:#007bff;color:white">
+<th>Expéditeur</th><th>Montant</th><th>Destinataire</th><th>Reçu</th><th>Action</th>
+</tr>`;
 
 users.forEach(u=>{
-const style=u.retired?'style="background:orange;color:white"':'';
-const action=u.retired?'✔ Retiré':
-`<select onchange="retirer('${u._id}',this.value)">
-<option>Retirer</option>
-<option>Espèces</option>
-<option>Orange Money</option>
-<option>Produit</option>
-</select>`;
-html+=`<tr ${style}>
+const rowStyle = u.retired ? 'style="background:orange;color:white"' : '';
+html+=`<tr ${rowStyle}>
 <td>${u.senderFirstName}</td>
 <td>${u.amount}</td>
 <td>${u.receiverFirstName}</td>
 <td>${u.recoveryAmount}</td>
-<td>${action}</td></tr>`;
+<td>
+<button class="retirer" onclick="retirer('${u._id}')">💰 Retirer</button>
+</td>
+</tr>`;
 });
 
 html+=`</table>
 <script>
-function retirer(id,mode){
+function retirer(id){
+ const mode = prompt("Mode de retrait : Espèces, Orange Money, Produit, Service");
+ if(!mode)return;
  fetch('/users/retirer',{method:'POST',headers:{'Content-Type':'application/json'},
  body:JSON.stringify({id,mode})}).then(()=>location.reload());
 }
-</script></body></html>`;
+</script>
+</body></html>`;
 res.send(html);
 });
 
@@ -186,23 +194,9 @@ await User.findByIdAndUpdate(id,{
  retired:true,
  $push:{retraitHistory:{date:new Date(),mode}}
 });
-res.json({message:'Retrait OK'});
-});
-
-/* ================= EXPORT PDF ================= */
-app.get('/users/export/pdf', async (req,res)=>{
-const users=await User.find({});
-const doc=new PDFDocument();
-res.setHeader('Content-Type','application/pdf');
-res.setHeader('Content-Disposition','attachment;filename=transferts.pdf');
-doc.pipe(res);
-users.forEach(u=>{
-doc.text(`${u.senderFirstName} -> ${u.receiverFirstName} | ${u.amount}`);
-doc.moveDown();
-});
-doc.end();
+res.json({message:'💰 Retrait effectué'});
 });
 
 /* ================= SERVER ================= */
-const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>console.log('🚀 Serveur démarré sur le port',PORT));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=>console.log('🚀 Serveur actif sur le port',PORT));

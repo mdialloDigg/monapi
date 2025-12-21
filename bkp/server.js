@@ -69,7 +69,7 @@ app.post('/auth/form', (req, res) => {
   res.redirect('/users');
 });
 
-// Lookup téléphone
+// Lookup téléphone pour pré-remplissage
 app.get('/users/lookup', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
   res.send(`
@@ -91,7 +91,7 @@ app.post('/users/lookup', async (req, res) => {
   res.redirect('/users/form');
 });
 
-// Formulaire transfert
+// Formulaire transfert avec modification et suppression
 app.get('/users/form', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
   const u = req.session.prefill || {};
@@ -193,7 +193,7 @@ fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users');
 `);
 });
 
-// CRUD
+// CRUD uniquement via formulaire
 app.post('/users', async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   await new User({ ...req.body, code, status: 'actif' }).save();
@@ -207,7 +207,6 @@ app.post('/users/update', async (req, res) => {
   res.json({ message: '✏️ Transfert mis à jour' });
 });
 
-// Suppression sécurisée
 app.post('/users/delete', async (req, res) => {
   if (!req.session.editId) return res.status(400).json({ message: 'Aucun transfert sélectionné' });
   await User.findByIdAndDelete(req.session.editId);
@@ -265,8 +264,6 @@ th{background:#007bff;color:#fff}
 .sub{background:#ddd;font-weight:bold}
 .total{background:#222;color:#fff;font-weight:bold}
 h3{margin-top:50px;text-align:center;color:#007bff}
-a.button{display:inline-block;padding:3px 7px;background:#28a745;color:#fff;border-radius:3px;text-decoration:none;margin:2px}
-a.delete{background:#dc3545}
 </style>
 </head>
 <body>
@@ -283,7 +280,7 @@ a.delete{background:#dc3545}
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
-<th>Montant reçu</th><th>Code</th><th>Date</th><th>Actions</th>
+<th>Montant reçu</th><th>Code</th><th>Date</th>
 </tr>`;
 
     list.forEach(u => {
@@ -303,10 +300,6 @@ a.delete{background:#dc3545}
 <td>${u.recoveryAmount || 0}</td>
 <td>${u.code || ''}</td>
 <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
-<td>
-<a class="button" href="/users/edit/${u._id}">✏️ Modifier</a>
-<a class="button delete" href="/users/delete/${u._id}" onclick="return confirm('Supprimer ce transfert ?')">❌ Supprimer</a>
-</td>
 </tr>`;
     });
 
@@ -329,24 +322,6 @@ a.delete{background:#dc3545}
 </body></html>`;
 
   res.send(html);
-});
-
-// Edition via liste
-app.get('/users/edit/:id', async (req, res) => {
-  if (!req.session.listAccess) return res.redirect('/users/all');
-  const u = await User.findById(req.params.id);
-  if (!u) return res.send('Transfert introuvable');
-  req.session.prefill = u;
-  req.session.editId = u._id;
-  req.session.formAccess = true; // autorise le formulaire
-  res.redirect('/users/form');
-});
-
-// Suppression via liste sécurisée
-app.get('/users/delete/:id', async (req, res) => {
-  if (!req.session.listAccess) return res.redirect('/users/all');
-  await User.findByIdAndDelete(req.params.id);
-  res.redirect('/users/all');
 });
 
 app.post('/auth/list', (req, res) => {

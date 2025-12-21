@@ -1,19 +1,36 @@
 const express = require("express");
-const mongoose = require("mongoose");
+const fetch = require("node-fetch");
+const router = express.Router();
 
-const authRoutes = require("./routes/auth");
-const transferRoutes = require("./routes/transfer");
+// POST /facebook
+router.post("/", async (req, res) => {
+  const { accessToken } = req.body;
 
-const app = express();
-app.use(express.json());
+  if (!accessToken) {
+    return res.status(400).json({ error: "Token manquant" });
+  }
 
-mongoose.connect("mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/?appName=Cluster0")
-    .then(() => console.log("✅ MongoDB connecté"))
-    .catch(err => console.error(err));
+  try {
+    // Vérification du token avec Facebook
+    const fbResponse = await fetch(
+      `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`
+    );
 
-app.use("/auth", authRoutes);
-app.use("/facebook", transferRoutes);
+    const data = await fbResponse.json();
 
-app.listen(3000, () => {
-    console.log("🚀 API sur http://localhost:3000");
+    if (data.error) {
+      return res.status(401).json({ error: "Token Facebook invalide" });
+    }
+
+    // Ici tu peux enregistrer l'utilisateur en DB
+    res.json({
+      message: "Connexion Facebook OK",
+      user: data
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
 });
+
+module.exports = router;

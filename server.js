@@ -50,7 +50,7 @@ const User = mongoose.model('User', userSchema);
 /* ================= ROUTES ================= */
 app.get('/', (req,res) => res.send('🚀 API Transfert en ligne'));
 
-// ===== FORMULAIRE /users =====
+/* ================= FORMULAIRE /users ================= */
 app.get('/users', (req,res)=>{
   if(!req.session.formAccess){
     return res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
@@ -68,7 +68,7 @@ app.post('/auth/form',(req,res)=>{
   res.redirect('/users/choice');
 });
 
-// PAGE CHOIX
+/* ================= PAGE CHOIX ================= */
 app.get('/users/choice',(req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
   res.send(`<html>
@@ -87,7 +87,7 @@ button{padding:12px 25px;margin:8px;font-size:16px;border:none;color:white;borde
 </body></html>`);
 });
 
-// LOOKUP PAR TÉLÉPHONE
+/* ================= LOOKUP PAR TÉLÉPHONE ================= */
 app.get('/users/lookup',(req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
   const mode=req.query.mode||'edit';
@@ -123,7 +123,7 @@ Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Reto
   res.redirect('/users/form');
 });
 
-// FORMULAIRE TRANSFERT
+/* ================= FORMULAIRE TRANSFERT ================= */
 app.get('/users/form', (req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
   const u=req.session.prefill||{};
@@ -210,7 +210,7 @@ fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
 </body></html>`);
 });
 
-// CRUD endpoints
+/* ================= CRUD ================= */
 app.post('/users', async (req,res)=>{
   const code=Math.floor(100000+Math.random()*900000).toString();
   await new User({...req.body, code,status:'actif'}).save();
@@ -331,6 +331,7 @@ for(let dest in grouped){
 <td>${subRecovery}</td><td colspan="2"></td><td></td>
 </tr></table>`;
 }
+
 html+=`<table><tr class="total">
 <td colspan="3">TOTAL GÉNÉRAL</td>
 <td>${totalAmount}</td><td>${totalFees}</td>
@@ -338,10 +339,11 @@ html+=`<table><tr class="total">
 <td>${totalRecovery}</td><td colspan="2"></td><td></td>
 </tr></table>
 <br><center><a href="/logout/list">🚪 Déconnexion</a></center></body></html>`;
+
 res.send(html);
 });
 
-// RETRAIT
+/* ================= RETRAIT ================= */
 app.post('/users/retirer', async (req,res)=>{
   const {id,mode}=req.body;
   if(!["Espèces","Orange Money","Produit","Service"].includes(mode)) return res.status(400).json({message:"Mode invalide"});
@@ -349,7 +351,7 @@ app.post('/users/retirer', async (req,res)=>{
   res.json({message:`💰 Retrait effectué via ${mode}`});
 });
 
-// EXPORT CSV
+/* ================= EXPORT CSV ================= */
 app.get('/users/export/csv', async (req,res)=>{
   const users=await User.find({});
   const fields=['senderFirstName','senderLastName','senderPhone','originLocation','amount','fees','receiverFirstName','receiverLastName','receiverPhone','destinationLocation','recoveryAmount','recoveryMode','code','createdAt'];
@@ -359,4 +361,12 @@ app.get('/users/export/csv', async (req,res)=>{
   res.attachment('transferts.csv');
   res.send(csv);
 });
+
+/* ================= EXPORT PDF ================= */
+app.get('/users/export/pdf', async (req,res)=>{
+  const users = await User.find({});
+  const doc = new PDFDocument({margin:30});
+  res.setHeader('Content-Disposition','attachment; filename="transferts.pdf"');
+  res.setHeader('Content-Type','application/pdf');
+  doc.pipe(res);
 

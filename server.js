@@ -41,6 +41,7 @@ const userSchema = new mongoose.Schema({
   code: String,
   status: { type: String, default: 'actif' },
   retraitHistory: [{ date: Date, mode: String }],
+  retired: { type: Boolean, default: false }, // ✅ Nouveau champ
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -268,19 +269,19 @@ app.get('/users/all', async (req,res)=>{
 </form></body></html>`);
   }
 
-  const users=await User.find({}).sort({ destinationLocation:1, createdAt:1 });
-  const grouped={};
-  let totalAmount=0,totalRecovery=0,totalFees=0;
+  const users = await User.find({}).sort({ destinationLocation:1, createdAt:1 });
+  const grouped = {};
+  let totalAmount = 0, totalRecovery = 0, totalFees = 0;
 
-  users.forEach(u=>{
-    if(!grouped[u.destinationLocation]) grouped[u.destinationLocation]=[];
+  users.forEach(u => {
+    if(!grouped[u.destinationLocation]) grouped[u.destinationLocation] = [];
     grouped[u.destinationLocation].push(u);
-    totalAmount+=(u.amount||0);
-    totalRecovery+=(u.recoveryAmount||0);
-    totalFees+=(u.fees||0);
+    totalAmount += (u.amount || 0);
+    totalRecovery += (u.recoveryAmount || 0);
+    totalFees += (u.fees || 0);
   });
 
-  let html=`<html><head>
+  let html = `<html><head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 body{font-family:Arial;background:#f4f6f9}
@@ -355,9 +356,9 @@ function exportPDF(){window.open("/users/export/pdf","_blank")}
 `;
 
 for(let dest in grouped){
-  const list=grouped[dest];
-  let subAmount=0,subRecovery=0,subFees=0;
-  html+=`<h3>Destination: ${dest}</h3>
+  const list = grouped[dest];
+  let subAmount = 0, subRecovery = 0, subFees = 0;
+  html += `<h3>Destination: ${dest}</h3>
 <table>
 <tr>
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
@@ -366,8 +367,17 @@ for(let dest in grouped){
 <th>Montant reçu</th><th>Code</th><th>Date</th><th>Action</th>
 </tr>`;
   list.forEach(u=>{
-    subAmount+=(u.amount||0); subRecovery+=(u.recoveryAmount||0); subFees+=(u.fees||0);
-    html+=`<tr>
+    subAmount += (u.amount||0);
+    subRecovery += (u.recoveryAmount||0);
+    subFees += (u.fees||0);
+
+    // Ligne orange si retrait effectué
+    const retraitClass = u.retired ? 'style="background-color:orange;color:white"' : '';
+
+    // Si déjà retiré, désactiver le bouton et changer le texte
+    const actionBtn = u.retired ? 'Retrait effectué' : `<button class="retirer" onclick="retirer('${u._id}')">💰 Retirer</button>`;
+
+    html += `<tr ${retraitClass}>
 <td>${u.senderFirstName||''} ${u.senderLastName||''}</td>
 <td>${u.senderPhone||''}</td>
 <td class="origin">${u.originLocation||''}</td>
@@ -378,11 +388,12 @@ for(let dest in grouped){
 <td class="dest">${u.destinationLocation||''}</td>
 <td>${u.recoveryAmount||0}</td>
 <td>${u.code||''}</td>
-<td>${u.createdAt?new Date(u.createdAt).toLocaleString():''}</td>
-<td><button class="retirer" onclick="retirer('${u._id}')">💰 Retirer</button></td>
+<td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
+<td>${actionBtn}</td>
 </tr>`;
   });
-  html+=`<tr class="sub">
+
+  html += `<tr class="sub">
 <td colspan="3">Sous-total ${dest}</td>
 <td>${subAmount}</td><td>${subFees}</td>
 <td colspan="2"></td><td></td>
@@ -390,7 +401,7 @@ for(let dest in grouped){
 </tr></table>`;
 }
 
-html+=`<table><tr class="total">
+html += `<table><tr class="total">
 <td colspan="3">TOTAL GÉNÉRAL</td>
 <td>${totalAmount}</td><td>${totalFees}</td>
 <td colspan="2"></td><td></td>
@@ -403,9 +414,14 @@ res.send(html);
 
 /* ================= RETRAIT ================= */
 app.post('/users/retirer', async (req,res)=>{
-  const {id,mode}=req.body;
-  if(!["Espèces","Orange Money","Produit","Service"].includes(mode)) return res.status(400).json({message:"Mode invalide"});
-  await User.findByIdAndUpdate(id,{recoveryMode:mode,$push:{retraitHistory:{date:new Date(),mode}}});
+  const {id,mode} = req.body;
+  if(!["Espèces","Orange Money","Produit","Service"].includes(mode))
+    return res.status(400).json({message:"Mode invalide"});
+  await User.findByIdAndUpdate(id,{
+    recoveryMode: mode,
+    retired: true, // ✅ Met à jour le champ retired
+    $push:{retraitHistory:{date:new Date(),mode}}
+  });
   res.json({message:`💰 Retrait effectué via ${mode}`});
 });
 

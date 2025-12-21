@@ -12,7 +12,7 @@ mongoose.connect("mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.
     .catch(err => console.error(err));
 
 app.use("/auth", authRoutes);
-app.use("/transfer", transferRoutes);
+app.use("/facebook", transferRoutes);
 
 app.listen(3000, () => {
     console.log("🚀 API sur http://localhost:3000");

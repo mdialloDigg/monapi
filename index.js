@@ -22,7 +22,7 @@ async function publier() {
       `https://graph.facebook.com/v19.0/${PAGE_ID}/feed`,
       {
         message: message,
-        access_token: PAGE_ACCESS_TOKEN
+        access_token: https://graph.facebook.com/oauth/access_token?client_id=137008337514&client_secret=63bbf2eab18503e69af6a31d58ae50fa&grant_type=client_credentials
       }
     );
 

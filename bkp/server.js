@@ -11,20 +11,18 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-  session({
-    secret: 'super-secret-transfert-key',
-    resave: false,
-    saveUninitialized: false
-  })
-);
+app.use(session({
+  secret: 'super-secret-transfert-key',
+  resave: false,
+  saveUninitialized: false
+}));
 
 /* ================= MONGODB ================= */
 mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
 )
 .then(() => console.log('✅ MongoDB connecté'))
-.catch(err => console.error(err));
+.catch(console.error);
 
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
@@ -49,7 +47,9 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-/* ================= FORMULAIRE ================= */
+/* ======================================================
+   🔐 FORMULAIRE
+====================================================== */
 app.get('/users', (req, res) => {
   if (!req.session.formAccess) {
     return res.send(`
@@ -64,23 +64,21 @@ app.get('/users', (req, res) => {
 
 res.send(`
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Créer un transfert</title>
 <style>
 body{font-family:Arial;background:#f2f2f2}
-form{background:#fff;width:900px;margin:40px auto;padding:20px;border-radius:8px}
+form{background:#fff;width:900px;margin:30px auto;padding:20px;border-radius:8px}
 .container{display:flex;gap:20px}
 .box{flex:1;padding:15px;border-radius:6px}
 .origin{background:#e9f1ff}
 .dest{background:#ffdede}
-input,select,button{width:100%;padding:8px;margin-top:8px}
-button{font-size:15px}
+input,button{width:100%;padding:8px;margin-top:8px}
 #save{background:#007bff;color:#fff}
 #print{background:#28a745;color:#fff}
 #logout{background:#dc3545;color:#fff}
-#message{text-align:center;font-weight:bold}
 </style>
 </head>
 <body>
@@ -90,10 +88,10 @@ button{font-size:15px}
 
 <div class="container">
 <div class="box origin">
-<h4>📤 Origine</h4>
-<input id="senderFirstName" placeholder="Prénom expéditeur" required>
-<input id="senderLastName" placeholder="Nom expéditeur" required>
-<input id="senderPhone" placeholder="Téléphone expéditeur" required>
+<h4>📤 Expéditeur</h4>
+<input id="senderFirstName" placeholder="Prénom" required>
+<input id="senderLastName" placeholder="Nom" required>
+<input id="senderPhone" placeholder="Téléphone" required>
 <input id="originLocation" placeholder="Origine" required>
 <input id="amount" type="number" placeholder="Montant" required>
 <input id="fees" type="number" placeholder="Frais" required>
@@ -101,10 +99,10 @@ button{font-size:15px}
 </div>
 
 <div class="box dest">
-<h4>📥 Destination</h4>
-<input id="receiverFirstName" placeholder="Prénom destinataire" required>
-<input id="receiverLastName" placeholder="Nom destinataire" required>
-<input id="receiverPhone" placeholder="Téléphone destinataire" required>
+<h4>📥 Destinataire</h4>
+<input id="receiverFirstName" placeholder="Prénom" required>
+<input id="receiverLastName" placeholder="Nom" required>
+<input id="receiverPhone" placeholder="Téléphone" required>
 <input id="destinationLocation" placeholder="Destination" required>
 <input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
 <input id="recoveryMode" placeholder="Mode de récupération" required>
@@ -114,8 +112,8 @@ button{font-size:15px}
 <input id="password" type="password" placeholder="Mot de passe" required>
 
 <button id="save">💾 Enregistrer</button>
-<button id="print" type="button" onclick="printReceipt()">🖨 Imprimer</button>
-<button id="logout" type="button" onclick="location.href='/logout'">Se déconnecter</button>
+<button type="button" id="print" onclick="printReceipt()">🖨 Imprimer</button>
+<button type="button" id="logout" onclick="location.href='/logout/form'">🚪 Déconnexion</button>
 
 <p id="message"></p>
 </form>
@@ -123,79 +121,61 @@ button{font-size:15px}
 <script>
 let lastCode = '';
 
-form.addEventListener('submit', async e => {
+form.onsubmit = async e => {
   e.preventDefault();
-
-  const payload = {
-    senderFirstName: senderFirstName.value,
-    senderLastName: senderLastName.value,
-    senderPhone: senderPhone.value,
-    originLocation: originLocation.value,
-    amount: Number(amount.value),
-    fees: Number(fees.value),
-    feePercent: Number(feePercent.value),
-
-    receiverFirstName: receiverFirstName.value,
-    receiverLastName: receiverLastName.value,
-    receiverPhone: receiverPhone.value,
-    destinationLocation: destinationLocation.value,
-    recoveryAmount: Number(recoveryAmount.value),
-    recoveryMode: recoveryMode.value,
-
-    password: password.value
-  };
-
-  const res = await fetch('/users', {
+  const res = await fetch('/users',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
+    body:JSON.stringify({
+      senderFirstName:senderFirstName.value,
+      senderLastName:senderLastName.value,
+      senderPhone:senderPhone.value,
+      originLocation:originLocation.value,
+      amount:+amount.value,
+      fees:+fees.value,
+      feePercent:+feePercent.value,
+      receiverFirstName:receiverFirstName.value,
+      receiverLastName:receiverLastName.value,
+      receiverPhone:receiverPhone.value,
+      destinationLocation:destinationLocation.value,
+      recoveryAmount:+recoveryAmount.value,
+      recoveryMode:recoveryMode.value,
+      password:password.value
+    })
   });
-
   const data = await res.json();
-  message.style.color = res.ok ? 'green' : 'red';
-  message.innerText = data.message + ' | Code : ' + data.code;
-  if(res.ok) lastCode = data.code;
-});
+  message.innerText = data.message + ' | Code: ' + data.code;
+  lastCode = data.code;
+};
 
 function printReceipt(){
-  if(!lastCode){
-    alert("Veuillez enregistrer d'abord");
-    return;
-  }
-
-  const w = window.open('', '', 'width=400,height=400');
+  if(!lastCode) return alert("Enregistrez d'abord");
+  const w = window.open('');
   w.document.write(
-    '<h2>📄 Reçu de transfert</h2>' +
-    '<p><b>Code :</b> ' + lastCode + '</p>' +
-    '<p><b>Destinataire :</b> ' +
-    receiverFirstName.value + ' ' + receiverLastName.value + '</p>' +
-    '<p><b>Destination :</b> ' + destinationLocation.value + '</p>'
+    '<h3>🧾 Reçu de transfert</h3>'+
+    '<p><b>Code:</b> '+lastCode+'</p>'+
+    '<p><b>Destinataire:</b> '+receiverFirstName.value+' '+receiverLastName.value+'</p>'+
+    '<p><b>Destination:</b> '+destinationLocation.value+'</p>'
   );
-  w.document.close();
   w.print();
 }
 </script>
-
 </body>
 </html>
 `);
 });
 
-/* ================= AUTH FORM ================= */
-app.post('/auth/form',(req,res)=>{
-  if(req.body.code==='123') req.session.formAccess=true;
-  res.redirect('/users');
-});
-
 /* ================= SAVE ================= */
 app.post('/users', async (req,res)=>{
-  const code = Math.floor(100000+Math.random()*900000).toString();
+  const code = Math.floor(100000 + Math.random()*900000).toString();
   const hash = await bcrypt.hash(req.body.password,10);
   await new User({...req.body,password:hash,code}).save();
   res.json({message:'✅ Transfert enregistré',code});
 });
 
-/* ================= LISTE DES TRANSFERTS (STYLÉE + TOTAUX) ================= */
+/* ======================================================
+   📋 LISTE DES TRANSFERTS (COMPLÈTE + TOTAUX)
+====================================================== */
 app.get('/users/all', async (req,res)=>{
   if(!req.session.listAccess){
     return res.send(`
@@ -208,33 +188,29 @@ app.get('/users/all', async (req,res)=>{
     `);
   }
 
-  const users = await User.find({}, {password:0,__v:0});
+  const users = await User.find({}, {password:0});
   let totalAmount = 0;
   let totalRecovery = 0;
 
   users.forEach(u=>{
-    totalAmount += u.amount || 0;
-    totalRecovery += u.recoveryAmount || 0;
+    totalAmount += u.amount;
+    totalRecovery += u.recoveryAmount;
   });
 
   let html = `
-<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Liste des transferts</title>
 <style>
-body{font-family:Arial;background:#f4f6f9}
 table{width:98%;margin:20px auto;border-collapse:collapse;background:#fff}
-th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:center}
+th,td{border:1px solid #ccc;padding:6px;font-size:13px;text-align:center}
 th{background:#007bff;color:#fff}
 .origin{background:#eef4ff;font-weight:bold}
 .destination{background:#ecfff1;font-weight:bold}
-.totals{background:#222;color:#fff;font-weight:bold}
-h2{text-align:center}
-.logout{display:block;text-align:center;margin:10px}
-</style></head>
-<body>
+.total{background:#222;color:#fff;font-weight:bold}
+</style>
 
-<h2>📋 Liste des transferts</h2>
-<a class="logout" href="/logout">🚪 Se déconnecter</a>
+<h2 style="text-align:center">📋 Liste des transferts</h2>
+<div style="text-align:center;margin-bottom:10px">
+<a href="/logout/list">🚪 Se déconnecter</a>
+</div>
 
 <table>
 <tr>
@@ -244,7 +220,7 @@ h2{text-align:center}
 </tr>
 <tr>
 <th>Prénom</th><th>Nom</th><th>Tél</th><th>Origine</th><th>Montant</th><th>Frais</th><th>Code</th>
-<th>Prénom</th><th>Nom</th><th>Tél</th><th>Destination</th><th>Montant reçu</th><th>Mode</th>
+<th>Prénom</th><th>Nom</th><th>Tél</th><th>Destination</th><th>Reçu</th><th>Mode</th>
 <th></th>
 </tr>`;
 
@@ -265,34 +241,43 @@ html+=`
 <td class="destination">${u.destinationLocation}</td>
 <td>${u.recoveryAmount}</td>
 <td>${u.recoveryMode}</td>
-
 <td>${new Date(u.createdAt).toLocaleString()}</td>
 </tr>`;
 });
 
 html+=`
-<tr class="totals">
+<tr class="total">
 <td colspan="4">TOTAL</td>
 <td>${totalAmount}</td>
 <td colspan="6"></td>
 <td>${totalRecovery}</td>
 <td colspan="2"></td>
 </tr>
-</table>
-</body></html>`;
+</table>`;
 
 res.send(html);
 });
 
-/* ================= AUTH LIST ================= */
+/* ================= AUTH ================= */
+app.post('/auth/form',(req,res)=>{
+  if(req.body.code==='123') req.session.formAccess=true;
+  res.redirect('/users');
+});
+
 app.post('/auth/list',(req,res)=>{
   if(req.body.code==='147') req.session.listAccess=true;
   res.redirect('/users/all');
 });
 
 /* ================= LOGOUT ================= */
-app.get('/logout',(req,res)=>{
-  req.session.destroy(()=>res.redirect('/users'));
+app.get('/logout/form',(req,res)=>{
+  req.session.formAccess=false;
+  res.redirect('/users');
+});
+
+app.get('/logout/list',(req,res)=>{
+  req.session.listAccess=false;
+  res.redirect('/users/all');
 });
 
 /* ================= SERVER ================= */

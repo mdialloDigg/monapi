@@ -349,7 +349,7 @@ html+=`<table><tr class="total">
 <td colspan="2"></td><td></td>
 <td>${totalRecovery}</td><td colspan="2"></td><td></td>
 </tr></table>
-<br><center><a href="/logout/list">🚪 Déconnexion</a></center></body></html>`;
+<br><center><a href="/users/all">🚪 Déconnexion</a></center></body></html>`;
 
 res.send(html);
 });

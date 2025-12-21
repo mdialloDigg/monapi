@@ -249,9 +249,11 @@ app.get('/users/all', async (req,res)=>{
 <button>Valider</button>
 </form></body></html>`);
   }
+
   const users=await User.find({}).sort({ destinationLocation:1, createdAt:1 });
   const grouped={};
   let totalAmount=0,totalRecovery=0,totalFees=0;
+
   users.forEach(u=>{
     if(!grouped[u.destinationLocation]) grouped[u.destinationLocation]=[];
     grouped[u.destinationLocation].push(u);
@@ -360,5 +362,6 @@ app.get('/users/export/csv', async (req,res)=>{
 
 // EXPORT PDF
 app.get('/users/export/pdf', async (req,res)=>{
-  const users=await User.find({});
-  const doc =
+  const users = await User.find({});
+  const doc = new PDFDocument({margin:30});
+  res.setHeader('Content-Disposition','attachment; filename="trans

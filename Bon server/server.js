@@ -87,7 +87,7 @@ app.get('/users/lookup', (req, res) => {
 app.post('/users/lookup', async (req, res) => {
   const u = await User.findOne({ senderPhone: req.body.phone }).sort({ createdAt: -1 });
   req.session.prefill = u || { senderPhone: req.body.phone };
-  req.session.editId = null;
+  req.session.editId = u ? u._id : null;
   res.redirect('/users/form');
 });
 
@@ -119,7 +119,7 @@ button{border:none;color:#fff;font-size:15px}
 <body>
 
 <form id="form">
-<h3 style="text-align:center">${isEdit ? '✏️ Édition' : '💸 Nouveau'} transfert</h3>
+<h3 style="text-align:center">${isEdit ? '✏️ Modifier transfert' : '💸 Nouveau transfert'}</h3>
 
 <div class="container">
 <div class="box origin">
@@ -153,7 +153,7 @@ ${['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagn
 </div>
 
 <button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
-${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Annuler</button>':''}
+${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Supprimer</button>':''}
 <button type="button" id="logout" onclick="location.href=\'/logout/form\'">🚪 Déconnexion</button>
 <p id="message"></p>
 </form>
@@ -183,8 +183,8 @@ message.innerText=d.message;
 };
 
 function cancelTransfer(){
-if(!confirm('Annuler ce transfert ?'))return;
-fetch('/users/cancel',{method:'POST'}).then(()=>location.href='/users');
+if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
+fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users');
 }
 </script>
 
@@ -201,15 +201,18 @@ app.post('/users', async (req, res) => {
 });
 
 app.post('/users/update', async (req, res) => {
+  if (!req.session.editId) return res.status(400).json({ message: 'Aucun transfert sélectionné' });
   await User.findByIdAndUpdate(req.session.editId, req.body);
   req.session.editId = null;
   res.json({ message: '✏️ Transfert mis à jour' });
 });
 
-app.post('/users/cancel', async (req, res) => {
-  await User.findByIdAndUpdate(req.session.editId, { status: 'annulé' });
+// Suppression sécurisée
+app.post('/users/delete', async (req, res) => {
+  if (!req.session.editId) return res.status(400).json({ message: 'Aucun transfert sélectionné' });
+  await User.findByIdAndDelete(req.session.editId);
   req.session.editId = null;
-  res.sendStatus(200);
+  res.json({ message: '❌ Transfert supprimé' });
 });
 
 app.get('/logout/form', (req, res) => {
@@ -219,7 +222,7 @@ app.get('/logout/form', (req, res) => {
   res.redirect('/users');
 });
 
-/* ================= LISTE DES TRANSFERTS GROUPÉE PAR DESTINATION ================= */
+/* ================= LISTE DES TRANSFERTS ================= */
 app.get('/users/all', async (req, res) => {
   if (!req.session.listAccess) {
     return res.send(`
@@ -262,6 +265,8 @@ th{background:#007bff;color:#fff}
 .sub{background:#ddd;font-weight:bold}
 .total{background:#222;color:#fff;font-weight:bold}
 h3{margin-top:50px;text-align:center;color:#007bff}
+a.button{display:inline-block;padding:3px 7px;background:#28a745;color:#fff;border-radius:3px;text-decoration:none;margin:2px}
+a.delete{background:#dc3545}
 </style>
 </head>
 <body>
@@ -278,7 +283,7 @@ h3{margin-top:50px;text-align:center;color:#007bff}
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
-<th>Montant reçu</th><th>Code</th><th>Date</th>
+<th>Montant reçu</th><th>Code</th><th>Date</th><th>Actions</th>
 </tr>`;
 
     list.forEach(u => {
@@ -298,6 +303,10 @@ h3{margin-top:50px;text-align:center;color:#007bff}
 <td>${u.recoveryAmount || 0}</td>
 <td>${u.code || ''}</td>
 <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
+<td>
+<a class="button" href="/users/edit/${u._id}">✏️ Modifier</a>
+<a class="button delete" href="/users/delete/${u._id}" onclick="return confirm('Supprimer ce transfert ?')">❌ Supprimer</a>
+</td>
 </tr>`;
     });
 
@@ -320,6 +329,24 @@ h3{margin-top:50px;text-align:center;color:#007bff}
 </body></html>`;
 
   res.send(html);
+});
+
+// Edition via liste
+app.get('/users/edit/:id', async (req, res) => {
+  if (!req.session.listAccess) return res.redirect('/users/all');
+  const u = await User.findById(req.params.id);
+  if (!u) return res.send('Transfert introuvable');
+  req.session.prefill = u;
+  req.session.editId = u._id;
+  req.session.formAccess = true; // autorise le formulaire
+  res.redirect('/users/form');
+});
+
+// Suppression via liste sécurisée
+app.get('/users/delete/:id', async (req, res) => {
+  if (!req.session.listAccess) return res.redirect('/users/all');
+  await User.findByIdAndDelete(req.params.id);
+  res.redirect('/users/all');
 });
 
 app.post('/auth/list', (req, res) => {

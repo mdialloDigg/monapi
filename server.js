@@ -22,8 +22,9 @@ mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
 )
 .then(() => console.log('✅ MongoDB connecté'))
-.catch(err => console.error(err));
+.catch(console.error);
 
+/* ================= SCHEMA ================= */
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
   senderLastName: String,
@@ -48,22 +49,27 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 /* ======================================================
-   🔐 FORMULAIRE DE SAISIE — GET /users
+   🔐 FORMULAIRE — GET /users
 ====================================================== */
 app.get('/users', (req, res) => {
   if (!req.session.formAccess) {
     return res.send(`
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Accès formulaire</title>
+<style>
+body{font-family:Arial;background:#f4f6f9;text-align:center;padding-top:60px}
+input,button{padding:10px;font-size:16px;width:90%;max-width:300px}
+button{background:#007bff;color:#fff;border:none}
+</style>
 </head>
-<body style="text-align:center;margin-top:60px">
+<body>
 <h2>🔒 Accès au formulaire</h2>
 <form method="post" action="/auth/form">
-<input type="password" name="code" placeholder="Code d'accès" required>
-<br><br>
+<input type="password" name="code" placeholder="Code d'accès" required><br><br>
 <button>Valider</button>
 </form>
 </body>
@@ -71,29 +77,35 @@ app.get('/users', (req, res) => {
 `);
   }
 
-  res.send(`
+res.send(`
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Créer un transfert</title>
 <style>
-body{font-family:Arial;background:#f2f2f2}
-form{background:#fff;width:900px;margin:30px auto;padding:20px;border-radius:8px}
-.container{display:flex;gap:20px}
-.box{flex:1;padding:15px;border-radius:6px}
+body{font-family:Arial;background:#f2f2f2;margin:0}
+form{background:#fff;max-width:900px;margin:20px auto;padding:15px;border-radius:8px}
+.container{display:flex;gap:15px;flex-wrap:wrap}
+.box{flex:1;min-width:280px;padding:15px;border-radius:6px}
 .origin{background:#e9f1ff}
 .dest{background:#ffdede}
+h3,h4{text-align:center}
 input,button{width:100%;padding:8px;margin-top:8px}
-#save{background:#007bff;color:#fff}
-#print{background:#28a745;color:#fff}
-#logout{background:#dc3545;color:#fff}
+button{border:none;color:#fff;font-size:15px}
+#save{background:#007bff}
+#print{background:#28a745}
+#logout{background:#dc3545}
+@media(max-width:600px){
+  form{margin:0;border-radius:0}
+}
 </style>
 </head>
 <body>
 
 <form id="form">
-<h3 style="text-align:center">💸 Créer un transfert</h3>
+<h3>💸 Créer un transfert</h3>
 
 <div class="container">
 <div class="box origin">
@@ -129,12 +141,9 @@ input,button{width:100%;padding:8px;margin-top:8px}
 
 <script>
 let lastCode='';
-
-form.onsubmit = async e=>{
+form.onsubmit=async e=>{
 e.preventDefault();
-const res = await fetch('/users',{
-method:'POST',
-headers:{'Content-Type':'application/json'},
+const r=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},
 body:JSON.stringify({
 senderFirstName:senderFirstName.value,
 senderLastName:senderLastName.value,
@@ -150,17 +159,16 @@ destinationLocation:destinationLocation.value,
 recoveryAmount:+recoveryAmount.value,
 recoveryMode:recoveryMode.value,
 password:password.value
-})
-});
-const data = await res.json();
-message.innerText = data.message+' | Code: '+data.code;
-lastCode=data.code;
+})});
+const d=await r.json();
+message.innerText=d.message+' | Code: '+d.code;
+lastCode=d.code;
 };
 
 function printReceipt(){
 if(!lastCode)return alert('Enregistrez d’abord');
 const w=window.open('');
-w.document.write('<h3>Reçu</h3><p>Code:'+lastCode+'</p><p>Destination:'+destinationLocation.value+'</p>');
+w.document.write('<h3>🧾 Reçu</h3><p><b>Code:</b> '+lastCode+'</p><p><b>Destinataire:</b> '+receiverFirstName.value+' '+receiverLastName.value+'</p><p><b>Destination:</b> '+destinationLocation.value+'</p>');
 w.print();
 }
 </script>
@@ -184,47 +192,116 @@ app.post('/auth/form',(req,res)=>{
 });
 
 /* ======================================================
-   📋 LISTE DES TRANSFERTS — GET /users/all
+   📋 LISTE — GROUPÉE, COLORÉE, RESPONSIVE
 ====================================================== */
 app.get('/users/all', async (req,res)=>{
   if(!req.session.listAccess){
     return res.send(`
-<h2 style="text-align:center;margin-top:60px">🔒 Accès liste</h2>
-<form method="post" action="/auth/list" style="text-align:center">
-<input type="password" name="code" placeholder="Code d'accès" required>
-<br><br>
+<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="text-align:center;padding-top:60px">
+<h2>🔒 Accès liste</h2>
+<form method="post" action="/auth/list">
+<input type="password" name="code" placeholder="Code d'accès" required><br><br>
 <button>Valider</button>
 </form>
+</body></html>
 `);
   }
 
   const users = await User.find({}, {password:0});
   const grouped = {};
-  let totalA=0,totalR=0;
+  let grandA=0, grandR=0;
 
   users.forEach(u=>{
     grouped[u.destinationLocation]=grouped[u.destinationLocation]||[];
     grouped[u.destinationLocation].push(u);
-    totalA+=u.amount;
-    totalR+=u.recoveryAmount;
+    grandA+=u.amount;
+    grandR+=u.recoveryAmount;
   });
 
-  let html=`<h2 style="text-align:center">📋 Liste par destination</h2>
-  <div style="text-align:center"><a href="/logout/list">🚪 Déconnexion</a></div>`;
+let html=`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Liste des transferts</title>
+<style>
+body{font-family:Arial;background:#f4f6f9;margin:0}
+.section{margin:20px}
+.title{background:#343a40;color:#fff;padding:10px;border-radius:4px}
+.table-wrap{overflow-x:auto;background:#fff;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid #ccc;padding:6px;text-align:center}
+th{background:#007bff;color:#fff}
+.origin{background:#eef4ff}
+.destination{background:#ecfff1}
+.total{background:#222;color:#fff;font-weight:bold}
+.logout{text-align:center;margin:10px}
+</style>
+</head>
+<body>
 
-  for(const d in grouped){
-    let ta=0,tr=0;
-    html+=`<h3 style="margin-left:20px">${d}</h3>
-    <table border="1" width="98%" style="margin:auto">`;
-    grouped[d].forEach(u=>{
-      ta+=u.amount; tr+=u.recoveryAmount;
-      html+=`<tr><td>${u.senderFirstName}</td><td>${u.receiverFirstName}</td><td>${u.amount}</td><td>${u.recoveryAmount}</td></tr>`;
-    });
-    html+=`<tr><td colspan="2">TOTAL</td><td>${ta}</td><td>${tr}</td></tr></table>`;
-  }
+<h2 style="text-align:center">📋 Transferts par destination</h2>
+<div class="logout"><a href="/logout/list">🚪 Déconnexion</a></div>
+`;
 
-  html+=`<h3 style="text-align:center">TOTAL GÉNÉRAL : ${totalA} / ${totalR}</h3>`;
-  res.send(html);
+for(const dest in grouped){
+let tA=0,tR=0;
+html+=`<div class="section">
+<div class="title">🌍 Destination : ${dest}</div>
+<div class="table-wrap">
+<table>
+<tr>
+<th>Expéditeur</th><th>Tél</th><th>Origine</th><th>Montant</th><th>Code</th>
+<th>Destinataire</th><th>Tél</th><th>Reçu</th><th>Mode</th><th>Date</th>
+</tr>`;
+
+grouped[dest].forEach(u=>{
+tA+=u.amount; tR+=u.recoveryAmount;
+html+=`
+<tr>
+<td>${u.senderFirstName} ${u.senderLastName}</td>
+<td>${u.senderPhone}</td>
+<td class="origin">${u.originLocation}</td>
+<td>${u.amount}</td>
+<td>${u.code}</td>
+<td>${u.receiverFirstName} ${u.receiverLastName}</td>
+<td>${u.receiverPhone}</td>
+<td class="destination">${u.recoveryAmount}</td>
+<td>${u.recoveryMode}</td>
+<td>${new Date(u.createdAt).toLocaleDateString()}</td>
+</tr>`;
+});
+
+html+=`
+<tr class="total">
+<td colspan="3">TOTAL ${dest}</td>
+<td>${tA}</td>
+<td colspan="3"></td>
+<td>${tR}</td>
+<td colspan="2"></td>
+</tr>
+</table>
+</div>
+</div>`;
+}
+
+html+=`
+<div class="section">
+<table>
+<tr class="total">
+<td>TOTAL GÉNÉRAL ENVOYÉ : ${grandA}</td>
+<td>TOTAL GÉNÉRAL REÇU : ${grandR}</td>
+</tr>
+</table>
+</div>
+
+</body>
+</html>`;
+
+res.send(html);
 });
 
 /* ================= AUTH LIST ================= */

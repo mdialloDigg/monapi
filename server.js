@@ -3,7 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const cors = require('cors');
-const { Parser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 
 const app = express();
@@ -280,7 +279,6 @@ button.retirer{background:#28a745;color:#fff} button.export{background:#007bff;c
 @media(max-width:600px){table,th,td{font-size:12px;padding:4px}}
 </style></head><body>
 <h2>📋 Liste de tous les transferts groupés par destination</h2>
-<button class="export" onclick="exportCSV()">📄 Export CSV</button>
 <button class="export" onclick="exportPDF()">📄 Export PDF</button>
 <script>
 async function retirer(id){
@@ -291,7 +289,6 @@ async function retirer(id){
   const res=await fetch("/users/retirer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,mode})});
   const data=await res.json();alert(data.message);location.reload();
 }
-function exportCSV(){window.open("/users/export/csv","_blank")}
 function exportPDF(){window.open("/users/export/pdf","_blank")}
 </script>
 `;
@@ -351,15 +348,25 @@ app.post('/users/retirer', async (req,res)=>{
   res.json({message:`💰 Retrait effectué via ${mode}`});
 });
 
-/* ================= EXPORT CSV ================= */
-app.get('/users/export/csv', async (req,res)=>{
-  const users=await User.find({});
-  const fields=['senderFirstName','senderLastName','senderPhone','originLocation','amount','fees','receiverFirstName','receiverLastName','receiverPhone','destinationLocation','recoveryAmount','recoveryMode','code','createdAt'];
-  const parser = new Parser({fields});
-  const csv=parser.parse(users);
-  res.header('Content-Type','text/csv');
-  res.attachment('transferts.csv');
-  res.send(csv);
+/* ================= EXPORT PDF ================= */
+app.get('/users/export/pdf', async (req,res)=>{
+  const users = await User.find({}).sort({ destinationLocation:1, createdAt:1 });
+  const doc = new PDFDocument({margin:20, size:'A4'});
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition','attachment; filename="transferts.pdf"');
+  doc.pipe(res);
+
+  doc.fontSize(16).text('📋 Liste de tous les transferts', {align:'center'});
+  doc.moveDown();
+
+  users.forEach(u=>{
+    doc.fontSize(12).text(`Expéditeur: ${u.senderFirstName} ${u.senderLastName} | Tél: ${u.senderPhone} | Origine: ${u.originLocation}`);
+    doc.text(`Montant: ${u.amount} | Frais: ${u.fees}`);
+    doc.text(`Destinataire: ${u.receiverFirstName} ${u.receiverLastName} | Tél: ${u.receiverPhone} | Destination: ${u.destinationLocation}`);
+    doc.text(`Montant reçu: ${u.recoveryAmount} | Mode: ${u.recoveryMode} | Code: ${u.code}`);
+    doc.text(`Date: ${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}`);
+    doc.moveDown();
+  });
+
+  doc.end();
 });
-
-

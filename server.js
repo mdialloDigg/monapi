@@ -1,122 +1,208 @@
-app.get('/users/form', (req,res)=>{
-  if(!req.session.formAccess) return res.redirect('/users');
-  const u=req.session.prefill||{};
-  const isEdit=!!req.session.editId;
-  const locations=['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'];
+/* ================= IMPORTS ================= */
+const express = require('express');
+const mongoose = require('mongoose');
+const session = require('express-session');
+const cors = require('cors');
+const PDFDocument = require('pdfkit');
 
-  res.send(`<!DOCTYPE html>
+const app = express();
+
+/* ================= MIDDLEWARE ================= */
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(session({
+  secret: 'transfert-secret',
+  resave: false,
+  saveUninitialized: false
+}));
+
+/* ================= MONGODB ================= */
+mongoose.connect(
+  'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
+).then(()=>console.log('✅ MongoDB connecté'))
+ .catch(console.error);
+
+/* ================= SCHEMA ================= */
+const userSchema = new mongoose.Schema({
+  senderFirstName:String,
+  senderLastName:String,
+  senderPhone:String,
+  originLocation:String,
+  amount:Number,
+  feePercent:Number,
+  fees:Number,
+  receiverFirstName:String,
+  receiverLastName:String,
+  receiverPhone:String,
+  destinationLocation:String,
+  recoveryAmount:Number,
+  recoveryMode:String,
+  code:String,
+  retired:{type:Boolean,default:false},
+  retraitHistory:[{date:Date,mode:String}],
+  createdAt:{type:Date,default:Date.now}
+});
+
+const User = mongoose.model('User', userSchema);
+
+/* ================= HOME ================= */
+app.get('/', (req,res)=>{
+  res.send('🚀 API Transfert en ligne');
+});
+
+/* ================= FORMULAIRE ================= */
+app.get('/users/form',(req,res)=>{
+const u=req.session.prefill||{};
+res.send(`<!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{
-  font-family:Arial;
-  background:#f2f4f8;
-  margin:0;
-  padding:0
-}
-form{
-  background:#fff;
-  max-width:500px;
-  margin:10px auto;
-  padding:15px;
-  border-radius:10px;
-}
-h3{text-align:center}
-label{font-weight:bold;font-size:14px}
-input,select,button{
-  width:100%;
-  padding:12px;
-  margin-top:6px;
-  margin-bottom:12px;
-  font-size:16px;
-  border-radius:6px;
-  border:1px solid #ccc;
-}
-button{
-  border:none;
-  color:white;
-  font-size:16px;
-}
+body{font-family:Arial;background:#f2f4f8;margin:0}
+form{background:#fff;max-width:480px;margin:10px auto;padding:15px;border-radius:10px}
+input,select,button{width:100%;padding:12px;margin:6px 0;font-size:16px}
+button{border:none;color:white;border-radius:6px}
 #save{background:#007bff}
-#logout{background:#6c757d}
-.box{background:#eef3ff;padding:10px;border-radius:8px;margin-bottom:15px}
+.box{background:#eef3ff;padding:10px;border-radius:8px;margin-bottom:10px}
 .orange{background:#ffe5cc}
 </style>
 </head>
 <body>
-
 <form id="form">
-<h3>${isEdit?'✏️ Modifier transfert':'💸 Nouveau transfert'}</h3>
+<h3 style="text-align:center">💸 Nouveau transfert</h3>
 
 <div class="box">
-<label>📤 Expéditeur</label>
-<input id="senderFirstName" value="${u.senderFirstName||''}" placeholder="Prénom">
-<input id="senderLastName" value="${u.senderLastName||''}" placeholder="Nom">
-<input id="senderPhone" value="${u.senderPhone||''}" placeholder="Téléphone" required>
-<select id="originLocation">${locations.map(v=>`<option ${u.originLocation===v?'selected':''}>${v}</option>`).join('')}</select>
+<input id="senderFirstName" placeholder="Prénom expéditeur">
+<input id="senderLastName" placeholder="Nom expéditeur">
+<input id="senderPhone" placeholder="Téléphone expéditeur" required>
+<select id="originLocation">
+<option>France</option><option>Belgique</option><option>Conakry</option>
+</select>
 </div>
 
 <div class="box">
-<label>💰 Montant</label>
-<input id="amount" type="number" value="${u.amount||''}" placeholder="Montant envoyé">
-<input id="feePercent" type="number" value="${u.feePercent||''}" placeholder="% Frais">
-<input id="fees" type="number" value="${u.fees||''}" placeholder="Frais calculés" readonly>
+<input id="amount" type="number" placeholder="Montant">
+<input id="feePercent" type="number" placeholder="% Frais">
+<input id="fees" placeholder="Frais" readonly>
 </div>
 
 <div class="box orange">
-<label>📥 Destinataire</label>
-<input id="receiverFirstName" value="${u.receiverFirstName||''}" placeholder="Prénom">
-<input id="receiverLastName" value="${u.receiverLastName||''}" placeholder="Nom">
-<input id="receiverPhone" value="${u.receiverPhone||''}" placeholder="Téléphone">
-<select id="destinationLocation">${locations.map(v=>`<option ${u.destinationLocation===v?'selected':''}>${v}</option>`).join('')}</select>
-<input id="recoveryAmount" type="number" value="${u.recoveryAmount||''}" placeholder="Montant reçu" readonly>
+<input id="receiverFirstName" placeholder="Prénom destinataire">
+<input id="receiverLastName" placeholder="Nom destinataire">
+<input id="receiverPhone" placeholder="Téléphone destinataire">
+<select id="destinationLocation">
+<option>Labé</option><option>Conakry</option><option>France</option>
+</select>
+<input id="recoveryAmount" placeholder="Montant reçu" readonly>
 </div>
 
-<button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
-<button type="button" id="logout" onclick="location.href='/logout/form'">🚪 Déconnexion</button>
-
+<button id="save">💾 Enregistrer</button>
 <p id="message"></p>
 </form>
 
 <script>
-function calculer(){
-  const montant = parseFloat(amount.value)||0;
-  const percent = parseFloat(feePercent.value)||0;
-  const frais = montant * percent / 100;
-  fees.value = frais.toFixed(2);
-  recoveryAmount.value = (montant - frais).toFixed(2);
+function calc(){
+ let m=+amount.value||0;
+ let p=+feePercent.value||0;
+ let f=m*p/100;
+ fees.value=f.toFixed(2);
+ recoveryAmount.value=(m-f).toFixed(2);
 }
+amount.oninput=calc;
+feePercent.oninput=calc;
 
-amount.oninput = calculer;
-feePercent.oninput = calculer;
-
-form.onsubmit = async e=>{
-  e.preventDefault();
-  const url='${isEdit?'/users/update':'/users'}';
-  const r=await fetch(url,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      senderFirstName:senderFirstName.value,
-      senderLastName:senderLastName.value,
-      senderPhone:senderPhone.value,
-      originLocation:originLocation.value,
-      amount:+amount.value,
-      feePercent:+feePercent.value,
-      fees:+fees.value,
-      receiverFirstName:receiverFirstName.value,
-      receiverLastName:receiverLastName.value,
-      receiverPhone:receiverPhone.value,
-      destinationLocation:destinationLocation.value,
-      recoveryAmount:+recoveryAmount.value
-    })
-  });
-  const d=await r.json();
-  message.innerText=d.message;
+form.onsubmit=async e=>{
+ e.preventDefault();
+ const r=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({
+ senderFirstName:senderFirstName.value,
+ senderLastName:senderLastName.value,
+ senderPhone:senderPhone.value,
+ originLocation:originLocation.value,
+ amount:+amount.value,
+ feePercent:+feePercent.value,
+ fees:+fees.value,
+ receiverFirstName:receiverFirstName.value,
+ receiverLastName:receiverLastName.value,
+ receiverPhone:receiverPhone.value,
+ destinationLocation:destinationLocation.value,
+ recoveryAmount:+recoveryAmount.value
+ })});
+ const d=await r.json();
+ message.innerText=d.message;
 };
 </script>
-
-</body>
-</html>`);
+</body></html>`);
 });
+
+/* ================= CREATE ================= */
+app.post('/users', async (req,res)=>{
+const code=Math.floor(100000+Math.random()*900000);
+await new User({...req.body,code}).save();
+res.json({message:'✅ Transfert enregistré | Code '+code});
+});
+
+/* ================= LISTE ================= */
+app.get('/users/all', async (req,res)=>{
+const users=await User.find({});
+let html=`<html><body style="font-family:Arial">
+<h2 style="text-align:center">📋 Liste des transferts</h2>
+<table border="1" width="100%" cellpadding="5">
+<tr><th>Expéditeur</th><th>Montant</th><th>Destinataire</th><th>Reçu</th><th>Action</th></tr>`;
+
+users.forEach(u=>{
+const style=u.retired?'style="background:orange;color:white"':'';
+const action=u.retired?'✔ Retiré':
+`<select onchange="retirer('${u._id}',this.value)">
+<option>Retirer</option>
+<option>Espèces</option>
+<option>Orange Money</option>
+<option>Produit</option>
+</select>`;
+html+=`<tr ${style}>
+<td>${u.senderFirstName}</td>
+<td>${u.amount}</td>
+<td>${u.receiverFirstName}</td>
+<td>${u.recoveryAmount}</td>
+<td>${action}</td></tr>`;
+});
+
+html+=`</table>
+<script>
+function retirer(id,mode){
+ fetch('/users/retirer',{method:'POST',headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({id,mode})}).then(()=>location.reload());
+}
+</script></body></html>`;
+res.send(html);
+});
+
+/* ================= RETRAIT ================= */
+app.post('/users/retirer', async (req,res)=>{
+const {id,mode}=req.body;
+await User.findByIdAndUpdate(id,{
+ recoveryMode:mode,
+ retired:true,
+ $push:{retraitHistory:{date:new Date(),mode}}
+});
+res.json({message:'Retrait OK'});
+});
+
+/* ================= EXPORT PDF ================= */
+app.get('/users/export/pdf', async (req,res)=>{
+const users=await User.find({});
+const doc=new PDFDocument();
+res.setHeader('Content-Type','application/pdf');
+res.setHeader('Content-Disposition','attachment;filename=transferts.pdf');
+doc.pipe(res);
+users.forEach(u=>{
+doc.text(`${u.senderFirstName} -> ${u.receiverFirstName} | ${u.amount}`);
+doc.moveDown();
+});
+doc.end();
+});
+
+/* ================= SERVER ================= */
+const PORT=process.env.PORT||3000;
+app.listen(PORT,()=>console.log('🚀 Serveur démarré sur le port',PORT));

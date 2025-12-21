@@ -9,7 +9,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(session({
   secret: 'transfert-secret',
   resave: false,
@@ -46,13 +45,12 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-/* ======================================================
-   🔐 ACCÈS FORMULAIRE
-====================================================== */
+/* ================= ROUTES ================= */
+
+// Accès formulaire
 app.get('/users', (req, res) => {
   if (!req.session.formAccess) {
     return res.send(`
-<!DOCTYPE html>
 <html><body style="font-family:Arial;text-align:center;padding-top:60px">
 <h2>🔒 Accès formulaire</h2>
 <form method="post" action="/auth/form">
@@ -70,9 +68,7 @@ app.post('/auth/form', (req, res) => {
   res.redirect('/users');
 });
 
-/* ======================================================
-   📞 RECHERCHE TÉLÉPHONE
-====================================================== */
+// Lookup téléphone
 app.get('/users/lookup', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
   res.send(`
@@ -82,8 +78,7 @@ app.get('/users/lookup', (req, res) => {
 <input name="phone" required><br><br>
 <button>Continuer</button>
 </form>
-<br>
-<a href="/users/edit">✏️ Modifier / Annuler par code</a><br><br>
+<br><a href="/users/edit">✏️ Modifier / Annuler par code</a><br><br>
 <a href="/logout/form">🚪 Déconnexion</a>
 </body></html>
 `);
@@ -96,9 +91,7 @@ app.post('/users/lookup', async (req, res) => {
   res.redirect('/users/form');
 });
 
-/* ======================================================
-   ✏️ ÉDITION PAR CODE
-====================================================== */
+// Édition par code
 app.get('/users/edit', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
   res.send(`
@@ -120,9 +113,7 @@ app.post('/users/edit', async (req, res) => {
   res.redirect('/users/form');
 });
 
-/* ======================================================
-   📝 FORMULAIRE TRANSFERT
-====================================================== */
+// Formulaire transfert
 app.get('/users/form', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
   const u = req.session.prefill || {};
@@ -155,35 +146,35 @@ button{border:none;color:#fff;font-size:15px}
 <div class="container">
 <div class="box origin">
 <h4>📤 Expéditeur</h4>
-<input id="senderFirstName" value="${u.senderFirstName || ''}" placeholder="Prénom">
-<input id="senderLastName" value="${u.senderLastName || ''}" placeholder="Nom">
-<input id="senderPhone" value="${u.senderPhone || ''}" required placeholder="Téléphone">
+<input id="senderFirstName" value="${u.senderFirstName||''}" placeholder="Prénom">
+<input id="senderLastName" value="${u.senderLastName||''}" placeholder="Nom">
+<input id="senderPhone" value="${u.senderPhone||''}" required placeholder="Téléphone">
 <select id="originLocation">
 ${['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'].map(v=>`<option ${u.originLocation===v?'selected':''}>${v}</option>`).join('')}
 </select>
-<input id="amount" type="number" value="${u.amount || ''}" placeholder="Montant">
-<input id="fees" type="number" value="${u.fees || ''}" placeholder="Frais">
-<input id="feePercent" type="number" value="${u.feePercent || ''}" placeholder="% Frais">
+<input id="amount" type="number" value="${u.amount||''}" placeholder="Montant">
+<input id="fees" type="number" value="${u.fees||''}" placeholder="Frais">
+<input id="feePercent" type="number" value="${u.feePercent||''}" placeholder="% Frais">
 </div>
 
 <div class="box dest">
 <h4>📥 Destinataire</h4>
-<input id="receiverFirstName" value="${u.receiverFirstName || ''}" placeholder="Prénom">
-<input id="receiverLastName" value="${u.receiverLastName || ''}" placeholder="Nom">
-<input id="receiverPhone" value="${u.receiverPhone || ''}" placeholder="Téléphone">
+<input id="receiverFirstName" value="${u.receiverFirstName||''}" placeholder="Prénom">
+<input id="receiverLastName" value="${u.receiverLastName||''}" placeholder="Nom">
+<input id="receiverPhone" value="${u.receiverPhone||''}" placeholder="Téléphone">
 <select id="destinationLocation">
 ${['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'].map(v=>`<option ${u.destinationLocation===v?'selected':''}>${v}</option>`).join('')}
 </select>
-<input id="recoveryAmount" type="number" value="${u.recoveryAmount || ''}" placeholder="Montant reçu">
+<input id="recoveryAmount" type="number" value="${u.recoveryAmount||''}" placeholder="Montant reçu">
 <select id="recoveryMode">
 <option>Espèces</option><option>Orange Money</option><option>Wave</option>
 </select>
 </div>
 </div>
 
-<button id="save">${isEdit ? '💾 Mettre à jour' : '💾 Enregistrer'}</button>
-${isEdit ? '<button type="button" id="cancel" onclick="cancelTransfer()">❌ Annuler</button>' : ''}
-<button type="button" id="logout" onclick="location.href='/logout/form'">🚪 Déconnexion</button>
+<button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
+${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Annuler</button>':''}
+<button type="button" id="logout" onclick="location.href=\'/logout/form\'">🚪 Déconnexion</button>
 <p id="message"></p>
 </form>
 
@@ -222,7 +213,7 @@ fetch('/users/cancel',{method:'POST'}).then(()=>location.href='/users');
 `);
 });
 
-/* ================= CRUD ================= */
+// CRUD
 app.post('/users', async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   await new User({ ...req.body, code, status: 'actif' }).save();
@@ -241,8 +232,15 @@ app.post('/users/cancel', async (req, res) => {
   res.sendStatus(200);
 });
 
+app.get('/logout/form', (req, res) => {
+  req.session.formAccess = false;
+  req.session.prefill = null;
+  req.session.editId = null;
+  res.redirect('/users');
+});
+
 /* ======================================================
-   📋 LISTE DES TRANSFERTS (CORRIGÉ)
+   📋 LISTE DES TRANSFERTS TOTALE
 ====================================================== */
 app.get('/users/all', async (req, res) => {
   if (!req.session.listAccess) {
@@ -257,7 +255,9 @@ app.get('/users/all', async (req, res) => {
 `);
   }
 
-  const users = await User.find({ status: 'actif' }).sort({ destinationLocation: 1 });
+  const users = await User.find({}).sort({ destinationLocation: 1 });
+
+  let totalAmount = 0, totalRecovery = 0, totalFees = 0;
 
   let html = `
 <html>
@@ -265,66 +265,58 @@ app.get('/users/all', async (req, res) => {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 body{font-family:Arial;background:#f4f6f9}
-h2{text-align:center}
+h2{text-align:center;margin-top:20px}
 table{width:98%;margin:auto;border-collapse:collapse;background:#fff}
 th,td{border:1px solid #ccc;padding:6px;font-size:13px;text-align:center}
 th{background:#007bff;color:#fff}
-.dest{background:#eef}
-.sub{background:#ddd;font-weight:bold}
+.origin{background:#e3f0ff}
+.dest{background:#ffe3e3}
 .total{background:#222;color:#fff;font-weight:bold}
 </style>
 </head>
 <body>
-<h2>📋 Liste des transferts</h2>
+<h2>📋 Liste de tous les transferts</h2>
 <table>
 <tr>
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
-<th>Destinataire</th><th>Destination</th>
-<th>Montant reçu</th><th>Date</th>
+<th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
+<th>Montant reçu</th><th>Code</th><th>Date</th>
 </tr>
 `;
 
-  let currentDest = null;
-  let subAmount = 0, subFees = 0;
-  let totalAmount = 0, totalFees = 0;
-
   users.forEach(u => {
-    if (currentDest && u.destinationLocation !== currentDest) {
-      html += `<tr class="sub"><td colspan="3">Sous-total ${currentDest}</td>
-<td>${subAmount}</td><td>${subFees}</td><td colspan="4"></td></tr>`;
-      subAmount = subFees = 0;
-    }
-
-    currentDest = u.destinationLocation;
-    subAmount += u.amount;
-    subFees += u.fees;
     totalAmount += u.amount;
+    totalRecovery += u.recoveryAmount;
     totalFees += u.fees;
 
-    html += `
-<tr>
+    html += `<tr>
 <td>${u.senderFirstName} ${u.senderLastName}</td>
 <td>${u.senderPhone}</td>
-<td>${u.originLocation}</td>
+<td class="origin">${u.originLocation}</td>
 <td>${u.amount}</td>
 <td>${u.fees}</td>
 <td>${u.receiverFirstName} ${u.receiverLastName}</td>
+<td>${u.receiverPhone}</td>
 <td class="dest">${u.destinationLocation}</td>
 <td>${u.recoveryAmount}</td>
+<td>${u.code}</td>
 <td>${new Date(u.createdAt).toLocaleString()}</td>
 </tr>`;
   });
 
-  html += `
-<tr class="sub"><td colspan="3">Sous-total ${currentDest}</td>
-<td>${subAmount}</td><td>${subFees}</td><td colspan="4"></td></tr>
-<tr class="total"><td colspan="3">TOTAL GÉNÉRAL</td>
-<td>${totalAmount}</td><td>${totalFees}</td><td colspan="4"></td></tr>
+  html += `<tr class="total">
+<td colspan="3">TOTAL</td>
+<td>${totalAmount}</td>
+<td>${totalFees}</td>
+<td colspan="3"></td>
+<td>${totalRecovery}</td>
+<td colspan="2"></td>
+</tr>
 </table>
 <br><center><a href="/logout/list">🚪 Déconnexion</a></center>
-</body></html>
-`;
+</body>
+</html>`;
 
   res.send(html);
 });
@@ -337,13 +329,6 @@ app.post('/auth/list', (req, res) => {
 app.get('/logout/list', (req, res) => {
   req.session.listAccess = false;
   res.redirect('/users/all');
-});
-
-app.get('/logout/form', (req, res) => {
-  req.session.formAccess = false;
-  req.session.prefill = null;
-  req.session.editId = null;
-  res.redirect('/users');
 });
 
 /* ================= SERVER ================= */

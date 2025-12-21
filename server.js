@@ -1,7 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
 const session = require('express-session');
 
 const app = express();
@@ -41,7 +40,6 @@ const userSchema = new mongoose.Schema({
   recoveryAmount: Number,
   recoveryMode: String,
 
-  password: String,
   code: String,
   createdAt: { type: Date, default: Date.now }
 });
@@ -92,14 +90,11 @@ form{background:#fff;max-width:900px;margin:20px auto;padding:15px;border-radius
 .origin{background:#e9f1ff}
 .dest{background:#ffdede}
 h3,h4{text-align:center}
-input,button{width:100%;padding:8px;margin-top:8px}
+input,select,button{width:100%;padding:8px;margin-top:8px}
 button{border:none;color:#fff;font-size:15px}
 #save{background:#007bff}
 #print{background:#28a745}
 #logout{background:#dc3545}
-@media(max-width:600px){
-  form{margin:0;border-radius:0}
-}
 </style>
 </head>
 <body>
@@ -113,7 +108,19 @@ button{border:none;color:#fff;font-size:15px}
 <input id="senderFirstName" placeholder="Prénom" required>
 <input id="senderLastName" placeholder="Nom" required>
 <input id="senderPhone" placeholder="Téléphone" required>
-<input id="originLocation" placeholder="Origine" required>
+
+<select id="originLocation" required>
+<option value="">Origine</option>
+<option>France</option>
+<option>Labé</option>
+<option>Belgique</option>
+<option>Conakry</option>
+<option>Suisse</option>
+<option>Atlanta</option>
+<option>New York</option>
+<option>Allemagne</option>
+</select>
+
 <input id="amount" type="number" placeholder="Montant" required>
 <input id="fees" type="number" placeholder="Frais" required>
 <input id="feePercent" type="number" placeholder="% Frais" required>
@@ -124,13 +131,31 @@ button{border:none;color:#fff;font-size:15px}
 <input id="receiverFirstName" placeholder="Prénom" required>
 <input id="receiverLastName" placeholder="Nom" required>
 <input id="receiverPhone" placeholder="Téléphone" required>
-<input id="destinationLocation" placeholder="Destination" required>
-<input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
-<input id="recoveryMode" placeholder="Mode récupération" required>
-</div>
-</div>
 
-<input id="password" type="password" placeholder="Mot de passe" required>
+<select id="destinationLocation" required>
+<option value="">Destination</option>
+<option>France</option>
+<option>Labé</option>
+<option>Belgique</option>
+<option>Conakry</option>
+<option>Suisse</option>
+<option>Atlanta</option>
+<option>New York</option>
+<option>Allemagne</option>
+</select>
+
+<input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
+
+<select id="recoveryMode" required>
+<option value="">Mode de retrait</option>
+<option>Espèces</option>
+<option>Orange Money</option>
+<option>Wave</option>
+<option>MTN Money</option>
+<option>Virement bancaire</option>
+</select>
+</div>
+</div>
 
 <button id="save">💾 Enregistrer</button>
 <button type="button" id="print" onclick="printReceipt()">🖨 Imprimer</button>
@@ -157,8 +182,7 @@ receiverLastName:receiverLastName.value,
 receiverPhone:receiverPhone.value,
 destinationLocation:destinationLocation.value,
 recoveryAmount:+recoveryAmount.value,
-recoveryMode:recoveryMode.value,
-password:password.value
+recoveryMode:recoveryMode.value
 })});
 const d=await r.json();
 message.innerText=d.message+' | Code: '+d.code;
@@ -180,145 +204,52 @@ w.print();
 /* ================= POST /users ================= */
 app.post('/users', async (req,res)=>{
   const code = Math.floor(100000 + Math.random()*900000).toString();
-  const hash = await bcrypt.hash(req.body.password,10);
-  await new User({...req.body,password:hash,code}).save();
+  await new User({...req.body,code}).save();
   res.json({message:'✅ Transfert enregistré',code});
 });
 
-/* ================= AUTH FORM ================= */
+/* ================= AUTH ================= */
 app.post('/auth/form',(req,res)=>{
   if(req.body.code==='123') req.session.formAccess=true;
   res.redirect('/users');
 });
-
-/* ======================================================
-   📋 LISTE — GROUPÉE, COLORÉE, RESPONSIVE
-====================================================== */
-app.get('/users/all', async (req,res)=>{
-  if(!req.session.listAccess){
-    return res.send(`
-<!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="text-align:center;padding-top:60px">
-<h2>🔒 Accès liste</h2>
-<form method="post" action="/auth/list">
-<input type="password" name="code" placeholder="Code d'accès" required><br><br>
-<button>Valider</button>
-</form>
-</body></html>
-`);
-  }
-
-  const users = await User.find({}, {password:0});
-  const grouped = {};
-  let grandA=0, grandR=0;
-
-  users.forEach(u=>{
-    grouped[u.destinationLocation]=grouped[u.destinationLocation]||[];
-    grouped[u.destinationLocation].push(u);
-    grandA+=u.amount;
-    grandR+=u.recoveryAmount;
-  });
-
-let html=`
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Liste des transferts</title>
-<style>
-body{font-family:Arial;background:#f4f6f9;margin:0}
-.section{margin:20px}
-.title{background:#343a40;color:#fff;padding:10px;border-radius:4px}
-.table-wrap{overflow-x:auto;background:#fff;border-radius:6px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{border:1px solid #ccc;padding:6px;text-align:center}
-th{background:#007bff;color:#fff}
-.origin{background:#eef4ff}
-.destination{background:#ecfff1}
-.total{background:#222;color:#fff;font-weight:bold}
-.logout{text-align:center;margin:10px}
-</style>
-</head>
-<body>
-
-<h2 style="text-align:center">📋 Transferts par destination</h2>
-<div class="logout"><a href="/logout/list">🚪 Déconnexion</a></div>
-`;
-
-for(const dest in grouped){
-let tA=0,tR=0;
-html+=`<div class="section">
-<div class="title">🌍 Destination : ${dest}</div>
-<div class="table-wrap">
-<table>
-<tr>
-<th>Expéditeur</th><th>Tél</th><th>Origine</th><th>Montant</th><th>Code</th>
-<th>Destinataire</th><th>Tél</th><th>Reçu</th><th>Mode</th><th>Date</th>
-</tr>`;
-
-grouped[dest].forEach(u=>{
-tA+=u.amount; tR+=u.recoveryAmount;
-html+=`
-<tr>
-<td>${u.senderFirstName} ${u.senderLastName}</td>
-<td>${u.senderPhone}</td>
-<td class="origin">${u.originLocation}</td>
-<td>${u.amount}</td>
-<td>${u.code}</td>
-<td>${u.receiverFirstName} ${u.receiverLastName}</td>
-<td>${u.receiverPhone}</td>
-<td class="destination">${u.recoveryAmount}</td>
-<td>${u.recoveryMode}</td>
-<td>${new Date(u.createdAt).toLocaleDateString()}</td>
-</tr>`;
-});
-
-html+=`
-<tr class="total">
-<td colspan="3">TOTAL ${dest}</td>
-<td>${tA}</td>
-<td colspan="3"></td>
-<td>${tR}</td>
-<td colspan="2"></td>
-</tr>
-</table>
-</div>
-</div>`;
-}
-
-html+=`
-<div class="section">
-<table>
-<tr class="total">
-<td>TOTAL GÉNÉRAL ENVOYÉ : ${grandA}</td>
-<td>TOTAL GÉNÉRAL REÇU : ${grandR}</td>
-</tr>
-</table>
-</div>
-
-</body>
-</html>`;
-
-res.send(html);
-});
-
-/* ================= AUTH LIST ================= */
 app.post('/auth/list',(req,res)=>{
   if(req.body.code==='147') req.session.listAccess=true;
   res.redirect('/users/all');
 });
 
+/* ================= LISTE ================= */
+app.get('/users/all', async (req,res)=>{
+  if(!req.session.listAccess){
+    return res.send(`<form method="post" action="/auth/list" style="text-align:center;margin-top:60px">
+<input type="password" name="code" placeholder="Code d'accès" required><br><br><button>Valider</button></form>`);
+  }
+
+  const users = await User.find({}, {__v:0});
+  const grouped={}; let ta=0,tr=0;
+  users.forEach(u=>{
+    grouped[u.destinationLocation]=grouped[u.destinationLocation]||[];
+    grouped[u.destinationLocation].push(u);
+    ta+=u.amount; tr+=u.recoveryAmount;
+  });
+
+  let html='<h2 style="text-align:center">📋 Transferts par destination</h2><div style="text-align:center"><a href="/logout/list">🚪 Déconnexion</a></div>';
+  for(const d in grouped){
+    let a=0,r=0;
+    html+=`<h3 style="margin-left:20px">${d}</h3><table border="1" width="98%" style="margin:auto">`;
+    grouped[d].forEach(u=>{
+      a+=u.amount; r+=u.recoveryAmount;
+      html+=`<tr><td>${u.senderFirstName}</td><td>${u.receiverFirstName}</td><td>${u.amount}</td><td>${u.recoveryAmount}</td></tr>`;
+    });
+    html+=`<tr><td colspan="2">TOTAL</td><td>${a}</td><td>${r}</td></tr></table>`;
+  }
+  html+=`<h3 style="text-align:center">TOTAL GÉNÉRAL : ${ta} / ${tr}</h3>`;
+  res.send(html);
+});
+
 /* ================= LOGOUT ================= */
-app.get('/logout/form',(req,res)=>{
-  req.session.formAccess=false;
-  res.redirect('/users');
-});
-app.get('/logout/list',(req,res)=>{
-  req.session.listAccess=false;
-  res.redirect('/users/all');
-});
+app.get('/logout/form',(req,res)=>{req.session.formAccess=false;res.redirect('/users');});
+app.get('/logout/list',(req,res)=>{req.session.listAccess=false;res.redirect('/users/all');});
 
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;

@@ -252,6 +252,11 @@ app.get('/logout/form',(req,res)=>{
   res.redirect('/users');
 });
 
+app.get('/logout/list',(req,res)=>{
+    req.session.listAccess=false;
+    res.redirect('/users/all');
+});
+
 /* ================= LISTE DES TRANSFERTS ================= */
 app.get('/users/all', async (req,res)=>{
   if(!req.session.listAccess){
@@ -294,15 +299,57 @@ button.retirer{background:#28a745;color:#fff} button.export{background:#007bff;c
 </style></head><body>
 <h2>📋 Liste de tous les transferts groupés par destination</h2>
 <button class="export" onclick="exportPDF()">📄 Export PDF</button>
+<br><center><button id="logoutBtn">🚪 Déconnexion</button></center>
 <script>
 async function retirer(id){
-  let mode=prompt("Mode de retrait : Espèces, Orange Money, Produit, Service");
-  if(!mode)return;
-  mode=mode.trim();
-  if(!["Espèces","Orange Money","Produit","Service"].includes(mode)){alert("Mode invalide !");return;}
-  const res=await fetch("/users/retirer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,mode})});
-  const data=await res.json();alert(data.message);location.reload();
+    const div = document.createElement('div');
+    div.style.position = 'fixed';
+    div.style.top = '0'; div.style.left = '0';
+    div.style.width = '100%'; div.style.height = '100%';
+    div.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    div.style.display = 'flex'; div.style.justifyContent = 'center'; div.style.alignItems = 'center';
+    div.style.zIndex = 9999;
+
+    const selectDiv = document.createElement('div');
+    selectDiv.style.backgroundColor = '#fff';
+    selectDiv.style.padding = '20px';
+    selectDiv.style.borderRadius = '8px';
+    selectDiv.innerHTML = \`
+        <h3>Mode de retrait</h3>
+        <select id="modeSelect">
+            <option value="">-- Choisir --</option>
+            <option value="Espèces">Espèces</option>
+            <option value="Orange Money">Orange Money</option>
+            <option value="Produit">Produit</option>
+            <option value="Service">Service</option>
+        </select>
+        <br><br>
+        <button id="confirmRetrait">Valider</button>
+        <button id="cancelRetrait">Annuler</button>
+    \`;
+    div.appendChild(selectDiv);
+    document.body.appendChild(div);
+
+    document.getElementById('cancelRetrait').onclick = () => div.remove();
+    document.getElementById('confirmRetrait').onclick = async () => {
+        const mode = document.getElementById('modeSelect').value;
+        if(!mode){ alert('Veuillez choisir un mode !'); return; }
+        const res = await fetch("/users/retirer", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({id, mode})
+        });
+        const data = await res.json();
+        alert(data.message);
+        div.remove();
+        location.reload();
+    }
 }
+
+document.getElementById('logoutBtn').onclick = () => {
+    fetch('/logout/list').then(()=>location.href='/users/all');
+}
+
 function exportPDF(){window.open("/users/export/pdf","_blank")}
 </script>
 `;
@@ -349,7 +396,7 @@ html+=`<table><tr class="total">
 <td colspan="2"></td><td></td>
 <td>${totalRecovery}</td><td colspan="2"></td><td></td>
 </tr></table>
-<br><center><a href="/users/all">🚪 Déconnexion</a></center></body></html>`;
+</body></html>`;
 
 res.send(html);
 });
@@ -364,18 +411,17 @@ app.post('/users/retirer', async (req,res)=>{
 
 /* ================= EXPORT PDF ================= */
 app.get('/users/export/pdf', async (req,res)=>{
-  const users = await User.find({}).sort({ destinationLocation:1, createdAt:1 });
-  const doc = new PDFDocument({margin:20, size:'A4'});
+  const users = await User.find({}).sort({destinationLocation:1, createdAt:1});
+  const doc = new PDFDocument({margin:30, size:'A4'});
   res.setHeader('Content-Type','application/pdf');
-  res.setHeader('Content-Disposition','attachment; filename="transferts.pdf"');
+  res.setHeader('Content-Disposition','attachment;filename=transferts.pdf');
   doc.pipe(res);
 
-  doc.fontSize(16).text('📋 Liste de tous les transferts', {align:'center'});
+  doc.fontSize(18).text('Liste des transferts', {align:'center'});
   doc.moveDown();
 
   users.forEach(u=>{
-    doc.fontSize(12).text(`Expéditeur: ${u.senderFirstName} ${u.senderLastName} | Tél: ${u.senderPhone} | Origine: ${u.originLocation}`);
-    doc.text(`Montant: ${u.amount} | Frais: ${u.fees}`);
+    doc.fontSize(12).text(`Expéditeur: ${u.senderFirstName} ${u.senderLastName} | Tél: ${u.senderPhone} | Origine: ${u.originLocation} | Montant: ${u.amount} | Frais: ${u.fees}`);
     doc.text(`Destinataire: ${u.receiverFirstName} ${u.receiverLastName} | Tél: ${u.receiverPhone} | Destination: ${u.destinationLocation}`);
     doc.text(`Montant reçu: ${u.recoveryAmount} | Mode: ${u.recoveryMode} | Code: ${u.code}`);
     doc.text(`Date: ${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}`);

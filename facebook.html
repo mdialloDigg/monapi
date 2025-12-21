@@ -1,34 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <title>FB Login Test</title>
+  <meta charset="UTF-8">
+  <title>Facebook Token JS</title>
 </head>
 <body>
-  <script>
-    window.fbAsyncInit = function() {
-      FB.init({
-        appId      : 'T137008337514', // remplace par ton App ID
-        cookie     : true,
-        xfbml      : true,
-        version    : 'v17.0'
-      });
 
-      FB.getLoginStatus(function(response) {
-        if (response.status === 'connected') {
-          console.log(response.authResponse.accessToken);
-        } else {
-          console.log('Utilisateur non connecté');
-        }
-      });
-    };
+<h3>Connexion Facebook</h3>
+<button onclick="loginFacebook()">Se connecter avec Facebook</button>
 
-    (function(d, s, id){
-       var js, fjs = d.getElementsByTagName(s)[0];
-       if (d.getElementById(id)) {return;}
-       js = d.createElement(s); js.id = id;
-       js.src = "https://connect.facebook.net/fr_FR/sdk.js";
-       fjs.parentNode.insertBefore(js, fjs);
-     }(document, 'script', 'facebook-jssdk'));
-  </script>
+<script>
+  // 1️⃣ Charger le SDK Facebook
+  window.fbAsyncInit = function () {
+    FB.init({
+      appId: "137008337514",   // ✅ TON APP ID
+      cookie: true,
+      xfbml: false,
+      version: "v17.0"
+    });
+  };
+
+  (function (d, s, id) {
+    if (d.getElementById(id)) return;
+    const js = d.createElement(s);
+    js.id = id;
+    js.src = "https://connect.facebook.net/fr_FR/sdk.js";
+    d.body.appendChild(js);
+  }(document, "script", "facebook-jssdk"));
+
+  // 2️⃣ Login Facebook
+  function loginFacebook() {
+    FB.login(function (response) {
+      if (response.authResponse) {
+        const token = response.authResponse.accessToken;
+        console.log("✅ TOKEN FACEBOOK :", token);
+        alert("Token Facebook récupéré !\n\nRegarde la console.");
+      } else {
+        console.log("❌ Connexion annulée");
+      }
+    }, { scope: "public_profile,email" });
+  }
+</script>
+
 </body>
 </html>

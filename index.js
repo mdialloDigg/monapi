@@ -1,36 +1,35 @@
-const express = require("express");
-const fetch = require("node-fetch");
-const router = express.Router();
+const axios = require("axios");
 
-// POST /facebook
-router.post("/", async (req, res) => {
-  const { accessToken } = req.body;
+// Remplace par l'ID de ta page et ton Page Access Token
+const PAGE_ID = "137008337514";
+const PAGE_ACCESS_TOKEN = "https://graph.facebook.com/oauth/access_token?client_id=137008337514&client_secret=63bbf2eab18503e69af6a31d58ae50fa&grant_type=client_credentials";
 
-  if (!accessToken) {
-    return res.status(400).json({ error: "Token manquant" });
-  }
+// Citat137008337514ions de philosophes
+const citations = [
+  "La liberté consiste à ne dépendre que des lois. — Rousseau",
+  "Je pense, donc je suis. — Descartes",
+  "Le bonheur est le souverain bien. — Aristote",
+  "L’homme est condamné à être libre. — Sartre",
+  "Connais-toi toi-même. — Socrate"
+];
 
+// Choix aléatoire
+const message = citations[Math.floor(Math.random() * citations.length)];
+
+async function publier() {
   try {
-    // Vérification du token avec Facebook
-    const fbResponse = await fetch(
-      `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`
+    const res = await axios.post(
+      `https://graph.facebook.com/v19.0/${PAGE_ID}/feed`,
+      {
+        message: message,
+        access_token: PAGE_ACCESS_TOKEN
+      }
     );
 
-    const data = await fbResponse.json();
-
-    if (data.error) {
-      return res.status(401).json({ error: "Token Facebook invalide" });
-    }
-
-    // Ici tu peux enregistrer l'utilisateur en DB
-    res.json({
-      message: "Connexion Facebook OK",
-      user: data
-    });
-
+    console.log("✅ Publication réussie :", res.data);
   } catch (err) {
-    res.status(500).json({ error: "Erreur serveur" });
+    console.error("❌ Erreur :", err.response?.data || err.message);
   }
-});
+}
 
-module.exports = router;
+publier();

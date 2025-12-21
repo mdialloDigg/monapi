@@ -22,7 +22,7 @@ mongoose.connect(
   'mongodb+srv://mlaminediallo_db_user:amSYetCmMskMw9Cm@cluster0.iaplugg.mongodb.net/test'
 )
 .then(() => console.log('✅ MongoDB connecté'))
-.catch(console.error);
+.catch(err => console.error(err));
 
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
@@ -48,172 +48,201 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 /* ======================================================
-   🔐 FORMULAIRE
+   🔐 FORMULAIRE DE SAISIE — GET /users
 ====================================================== */
-/* (inchangé — identique à ta version précédente) */
-
-/* ======================================================
-   📋 LISTE DES TRANSFERTS — GROUPÉE PAR DESTINATION
-====================================================== */
-app.get('/users/all', async (req, res) => {
-  if (!req.session.listAccess) {
+app.get('/users', (req, res) => {
+  if (!req.session.formAccess) {
     return res.send(`
-      <h2 style="text-align:center;margin-top:60px">🔒 Accès liste</h2>
-      <form method="post" action="/auth/list" style="text-align:center">
-        <input type="password" name="code" placeholder="Code d'accès" required>
-        <br><br>
-        <button>Valider</button>
-      </form>
-    `);
-  }
-
-  const users = await User.find({}, { password: 0 }).sort({ createdAt: -1 });
-
-  /* ===== GROUPEMENT PAR DESTINATION ===== */
-  const grouped = {};
-  let grandTotalAmount = 0;
-  let grandTotalRecovery = 0;
-
-  users.forEach(u => {
-    if (!grouped[u.destinationLocation]) {
-      grouped[u.destinationLocation] = [];
-    }
-    grouped[u.destinationLocation].push(u);
-
-    grandTotalAmount += u.amount;
-    grandTotalRecovery += u.recoveryAmount;
-  });
-
-  let html = `
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Liste des transferts</title>
+<title>Accès formulaire</title>
+</head>
+<body style="text-align:center;margin-top:60px">
+<h2>🔒 Accès au formulaire</h2>
+<form method="post" action="/auth/form">
+<input type="password" name="code" placeholder="Code d'accès" required>
+<br><br>
+<button>Valider</button>
+</form>
+</body>
+</html>
+`);
+  }
+
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Créer un transfert</title>
 <style>
-body{font-family:Arial;background:#f4f6f9}
-table{width:98%;margin:20px auto;border-collapse:collapse;background:#fff}
-th,td{border:1px solid #ccc;padding:6px;font-size:13px;text-align:center}
-th{background:#007bff;color:#fff}
-.origin{background:#eef4ff;font-weight:bold}
-.destination{background:#ecfff1;font-weight:bold}
-.total{background:#222;color:#fff;font-weight:bold}
-.section-title{
-  width:98%;
-  margin:30px auto 5px;
-  padding:10px;
-  background:#343a40;
-  color:#fff;
-  font-size:18px;
-  border-radius:4px;
-}
-.logout{text-align:center;margin:10px}
+body{font-family:Arial;background:#f2f2f2}
+form{background:#fff;width:900px;margin:30px auto;padding:20px;border-radius:8px}
+.container{display:flex;gap:20px}
+.box{flex:1;padding:15px;border-radius:6px}
+.origin{background:#e9f1ff}
+.dest{background:#ffdede}
+input,button{width:100%;padding:8px;margin-top:8px}
+#save{background:#007bff;color:#fff}
+#print{background:#28a745;color:#fff}
+#logout{background:#dc3545;color:#fff}
 </style>
 </head>
 <body>
 
-<h2 style="text-align:center">📋 Liste des transferts par destination</h2>
-<div class="logout">
-  <a href="/logout/list">🚪 Se déconnecter</a>
+<form id="form">
+<h3 style="text-align:center">💸 Créer un transfert</h3>
+
+<div class="container">
+<div class="box origin">
+<h4>📤 Expéditeur</h4>
+<input id="senderFirstName" placeholder="Prénom" required>
+<input id="senderLastName" placeholder="Nom" required>
+<input id="senderPhone" placeholder="Téléphone" required>
+<input id="originLocation" placeholder="Origine" required>
+<input id="amount" type="number" placeholder="Montant" required>
+<input id="fees" type="number" placeholder="Frais" required>
+<input id="feePercent" type="number" placeholder="% Frais" required>
 </div>
-`;
 
-  /* ===== AFFICHAGE PAR DESTINATION ===== */
-  for (const destination in grouped) {
-    let totalAmount = 0;
-    let totalRecovery = 0;
+<div class="box dest">
+<h4>📥 Destinataire</h4>
+<input id="receiverFirstName" placeholder="Prénom" required>
+<input id="receiverLastName" placeholder="Nom" required>
+<input id="receiverPhone" placeholder="Téléphone" required>
+<input id="destinationLocation" placeholder="Destination" required>
+<input id="recoveryAmount" type="number" placeholder="Montant reçu" required>
+<input id="recoveryMode" placeholder="Mode récupération" required>
+</div>
+</div>
 
-    grouped[destination].forEach(u => {
-      totalAmount += u.amount;
-      totalRecovery += u.recoveryAmount;
-    });
+<input id="password" type="password" placeholder="Mot de passe" required>
 
-    html += `
-<div class="section-title">🌍 Destination : ${destination}</div>
+<button id="save">💾 Enregistrer</button>
+<button type="button" id="print" onclick="printReceipt()">🖨 Imprimer</button>
+<button type="button" id="logout" onclick="location.href='/logout/form'">🚪 Déconnexion</button>
 
-<table>
-<tr>
-<th colspan="7">EXPÉDITEUR</th>
-<th colspan="6">DESTINATAIRE</th>
-<th>Date</th>
-</tr>
-<tr>
-<th>Prénom</th><th>Nom</th><th>Tél</th><th>Origine</th>
-<th>Montant</th><th>Frais</th><th>Code</th>
-<th>Prénom</th><th>Nom</th><th>Tél</th>
-<th>Destination</th><th>Reçu</th><th>Mode</th>
-<th></th>
-</tr>
-`;
+<p id="message"></p>
+</form>
 
-    grouped[destination].forEach(u => {
-      html += `
-<tr>
-<td>${u.senderFirstName}</td>
-<td>${u.senderLastName}</td>
-<td>${u.senderPhone}</td>
-<td class="origin">${u.originLocation}</td>
-<td>${u.amount}</td>
-<td>${u.fees}</td>
-<td>${u.code}</td>
+<script>
+let lastCode='';
 
-<td>${u.receiverFirstName}</td>
-<td>${u.receiverLastName}</td>
-<td>${u.receiverPhone}</td>
-<td class="destination">${u.destinationLocation}</td>
-<td>${u.recoveryAmount}</td>
-<td>${u.recoveryMode}</td>
+form.onsubmit = async e=>{
+e.preventDefault();
+const res = await fetch('/users',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({
+senderFirstName:senderFirstName.value,
+senderLastName:senderLastName.value,
+senderPhone:senderPhone.value,
+originLocation:originLocation.value,
+amount:+amount.value,
+fees:+fees.value,
+feePercent:+feePercent.value,
+receiverFirstName:receiverFirstName.value,
+receiverLastName:receiverLastName.value,
+receiverPhone:receiverPhone.value,
+destinationLocation:destinationLocation.value,
+recoveryAmount:+recoveryAmount.value,
+recoveryMode:recoveryMode.value,
+password:password.value
+})
+});
+const data = await res.json();
+message.innerText = data.message+' | Code: '+data.code;
+lastCode=data.code;
+};
 
-<td>${new Date(u.createdAt).toLocaleString()}</td>
-</tr>
-`;
-    });
-
-    html += `
-<tr class="total">
-<td colspan="4">TOTAL ${destination}</td>
-<td>${totalAmount}</td>
-<td colspan="6"></td>
-<td>${totalRecovery}</td>
-<td colspan="2"></td>
-</tr>
-</table>
-`;
-  }
-
-  /* ===== TOTAL GÉNÉRAL ===== */
-  html += `
-<table>
-<tr class="total">
-<td colspan="4">TOTAL GÉNÉRAL</td>
-<td>${grandTotalAmount}</td>
-<td colspan="6"></td>
-<td>${grandTotalRecovery}</td>
-<td colspan="2"></td>
-</tr>
-</table>
-
+function printReceipt(){
+if(!lastCode)return alert('Enregistrez d’abord');
+const w=window.open('');
+w.document.write('<h3>Reçu</h3><p>Code:'+lastCode+'</p><p>Destination:'+destinationLocation.value+'</p>');
+w.print();
+}
+</script>
 </body>
 </html>
-`;
+`);
+});
 
+/* ================= POST /users ================= */
+app.post('/users', async (req,res)=>{
+  const code = Math.floor(100000 + Math.random()*900000).toString();
+  const hash = await bcrypt.hash(req.body.password,10);
+  await new User({...req.body,password:hash,code}).save();
+  res.json({message:'✅ Transfert enregistré',code});
+});
+
+/* ================= AUTH FORM ================= */
+app.post('/auth/form',(req,res)=>{
+  if(req.body.code==='123') req.session.formAccess=true;
+  res.redirect('/users');
+});
+
+/* ======================================================
+   📋 LISTE DES TRANSFERTS — GET /users/all
+====================================================== */
+app.get('/users/all', async (req,res)=>{
+  if(!req.session.listAccess){
+    return res.send(`
+<h2 style="text-align:center;margin-top:60px">🔒 Accès liste</h2>
+<form method="post" action="/auth/list" style="text-align:center">
+<input type="password" name="code" placeholder="Code d'accès" required>
+<br><br>
+<button>Valider</button>
+</form>
+`);
+  }
+
+  const users = await User.find({}, {password:0});
+  const grouped = {};
+  let totalA=0,totalR=0;
+
+  users.forEach(u=>{
+    grouped[u.destinationLocation]=grouped[u.destinationLocation]||[];
+    grouped[u.destinationLocation].push(u);
+    totalA+=u.amount;
+    totalR+=u.recoveryAmount;
+  });
+
+  let html=`<h2 style="text-align:center">📋 Liste par destination</h2>
+  <div style="text-align:center"><a href="/logout/list">🚪 Déconnexion</a></div>`;
+
+  for(const d in grouped){
+    let ta=0,tr=0;
+    html+=`<h3 style="margin-left:20px">${d}</h3>
+    <table border="1" width="98%" style="margin:auto">`;
+    grouped[d].forEach(u=>{
+      ta+=u.amount; tr+=u.recoveryAmount;
+      html+=`<tr><td>${u.senderFirstName}</td><td>${u.receiverFirstName}</td><td>${u.amount}</td><td>${u.recoveryAmount}</td></tr>`;
+    });
+    html+=`<tr><td colspan="2">TOTAL</td><td>${ta}</td><td>${tr}</td></tr></table>`;
+  }
+
+  html+=`<h3 style="text-align:center">TOTAL GÉNÉRAL : ${totalA} / ${totalR}</h3>`;
   res.send(html);
 });
 
-/* ================= AUTH ================= */
-app.post('/auth/list', (req, res) => {
-  if (req.body.code === '147') req.session.listAccess = true;
+/* ================= AUTH LIST ================= */
+app.post('/auth/list',(req,res)=>{
+  if(req.body.code==='147') req.session.listAccess=true;
   res.redirect('/users/all');
 });
 
 /* ================= LOGOUT ================= */
-app.get('/logout/list', (req, res) => {
-  req.session.listAccess = false;
+app.get('/logout/form',(req,res)=>{
+  req.session.formAccess=false;
+  res.redirect('/users');
+});
+app.get('/logout/list',(req,res)=>{
+  req.session.listAccess=false;
   res.redirect('/users/all');
 });
 
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log('🚀 Serveur lancé sur le port', PORT)
-);
+app.listen(PORT,()=>console.log('🚀 Serveur en ligne sur le port',PORT));

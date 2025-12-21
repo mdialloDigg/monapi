@@ -91,28 +91,6 @@ app.post('/users/lookup', async (req, res) => {
   res.redirect('/users/form');
 });
 
-// Édition par code
-app.get('/users/edit', (req, res) => {
-  if (!req.session.formAccess) return res.redirect('/users');
-  res.send(`
-<html><body style="font-family:Arial;text-align:center;padding-top:60px">
-<h3>✏️ Modifier / ❌ Annuler</h3>
-<form method="post" action="/users/edit">
-<input name="code" placeholder="Code transfert" required><br><br>
-<button>Rechercher</button>
-</form>
-</body></html>
-`);
-});
-
-app.post('/users/edit', async (req, res) => {
-  const u = await User.findOne({ code: req.body.code });
-  if (!u) return res.send('<h3 style="color:red;text-align:center">❌ Code introuvable</h3>');
-  req.session.prefill = u;
-  req.session.editId = u._id;
-  res.redirect('/users/form');
-});
-
 // Formulaire transfert
 app.get('/users/form', (req, res) => {
   if (!req.session.formAccess) return res.redirect('/users');
@@ -240,7 +218,7 @@ app.get('/logout/form', (req, res) => {
 });
 
 /* ======================================================
-   📋 LISTE DES TRANSFERTS PAR DESTINATION
+   📋 LISTE DES TRANSFERTS PAR DESTINATION - TABLEAU SÉPARÉ
 ====================================================== */
 app.get('/users/all', async (req, res) => {
   if (!req.session.listAccess) {
@@ -257,7 +235,18 @@ app.get('/users/all', async (req, res) => {
 
   const users = await User.find({ status: 'actif' }).sort({ destinationLocation: 1, createdAt: 1 });
 
+  const grouped = {};
   let totalAmount = 0, totalRecovery = 0, totalFees = 0;
+
+  users.forEach(u => {
+    if (!grouped[u.destinationLocation]) grouped[u.destinationLocation] = [];
+    grouped[u.destinationLocation].push(u);
+
+    totalAmount += u.amount;
+    totalRecovery += u.recoveryAmount;
+    totalFees += u.fees;
+  });
+
   let html = `
 <html>
 <head>
@@ -265,47 +254,39 @@ app.get('/users/all', async (req, res) => {
 <style>
 body{font-family:Arial;background:#f4f6f9}
 h2{text-align:center;margin-top:20px}
-table{width:98%;margin:auto;border-collapse:collapse;background:#fff}
+table{width:95%;margin:auto;border-collapse:collapse;background:#fff;margin-bottom:40px}
 th,td{border:1px solid #ccc;padding:6px;font-size:13px;text-align:center}
 th{background:#007bff;color:#fff}
 .origin{background:#e3f0ff}
 .dest{background:#ffe3e3}
 .sub{background:#ddd;font-weight:bold}
 .total{background:#222;color:#fff;font-weight:bold}
+h3{margin-top:50px;text-align:center;color:#007bff}
 </style>
 </head>
 <body>
-<h2>📋 Liste de tous les transferts (groupés par destination)</h2>
+<h2>📋 Liste de tous les transferts groupés par destination</h2>
+`;
+
+  for (let dest in grouped) {
+    const list = grouped[dest];
+    let subAmount = 0, subRecovery = 0, subFees = 0;
+
+    html += `<h3>Destination: ${dest}</h3>
 <table>
 <tr>
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
 <th>Montant reçu</th><th>Code</th><th>Date</th>
-</tr>
-`;
+</tr>`;
 
-  let currentDest = null;
-  let subAmount = 0, subRecovery = 0, subFees = 0;
+    list.forEach(u => {
+      subAmount += u.amount;
+      subRecovery += u.recoveryAmount;
+      subFees += u.fees;
 
-  users.forEach(u => {
-    if (currentDest && u.destinationLocation !== currentDest) {
-      html += `<tr class="sub"><td colspan="3">Sous-total ${currentDest}</td>
-<td>${subAmount}</td><td>${subFees}</td>
-<td colspan="2"></td><td></td>
-<td>${subRecovery}</td><td colspan="2"></td></tr>`;
-      subAmount = subRecovery = subFees = 0;
-    }
-
-    currentDest = u.destinationLocation;
-    subAmount += u.amount;
-    subRecovery += u.recoveryAmount;
-    subFees += u.fees;
-    totalAmount += u.amount;
-    totalRecovery += u.recoveryAmount;
-    totalFees += u.fees;
-
-    html += `<tr>
+      html += `<tr>
 <td>${u.senderFirstName} ${u.senderLastName}</td>
 <td>${u.senderPhone}</td>
 <td class="origin">${u.originLocation}</td>
@@ -318,19 +299,23 @@ th{background:#007bff;color:#fff}
 <td>${u.code}</td>
 <td>${new Date(u.createdAt).toLocaleString()}</td>
 </tr>`;
-  });
+    });
 
-  // dernier sous-total
-  html += `<tr class="sub"><td colspan="3">Sous-total ${currentDest}</td>
+    html += `<tr class="sub">
+<td colspan="3">Sous-total ${dest}</td>
 <td>${subAmount}</td><td>${subFees}</td>
 <td colspan="2"></td><td></td>
-<td>${subRecovery}</td><td colspan="2"></td></tr>`;
+<td>${subRecovery}</td><td colspan="2"></td>
+</tr></table>`;
+  }
 
-  html += `<tr class="total"><td colspan="3">TOTAL GÉNÉRAL</td>
-<td>${totalAmount}</td><td>${totalFees}</td>
+  html += `<table><tr class="total">
+<td colspan="3">TOTAL GÉNÉRAL</td>
+<td>${totalAmount}</td>
+<td>${totalFees}</td>
 <td colspan="2"></td><td></td>
-<td>${totalRecovery}</td><td colspan="2"></td></tr>
-</table>
+<td>${totalRecovery}</td><td colspan="2"></td>
+</tr></table>
 <br><center><a href="/logout/list">🚪 Déconnexion</a></center>
 </body></html>`;
 

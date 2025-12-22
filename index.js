@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 // ⚠️ Remplace par l'ID de ta page et ton App Secret
-const PAGE_ID = "100728859741439";
+const PAGE_ID = "134895793791914";
 const APP_ID = "137008337514";
 const APP_SECRET = "63bbf2eab18503e69af6a31d58ae50fa";
 

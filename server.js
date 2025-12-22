@@ -170,7 +170,7 @@ app.get('/users/export/pdf', requireRole(['admin']), async (req,res)=>{
 });
 
 /* ================= CRÉATION ADMIN (UNE FOIS) ================= */
-/*
+
 (async ()=>{
   const hash = await bcrypt.hash("admin123",10);
   await AuthUser.create({
@@ -181,7 +181,7 @@ app.get('/users/export/pdf', requireRole(['admin']), async (req,res)=>{
   });
   console.log("ADMIN CRÉÉ");
 })();
-*/
+
 
 /* ================= ÉCOUTE ================= */
 const PORT = process.env.PORT || 3000;

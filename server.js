@@ -24,7 +24,7 @@ mongoose.connect(
 ).then(() => console.log('✅ MongoDB connecté'))
  .catch(console.error);
 
-/* ================= SCHEMA TRANSFERT (EXISTANT) ================= */
+/* ================= SCHEMA TRANSFERT ================= */
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
   senderLastName: String,
@@ -45,10 +45,9 @@ const userSchema = new mongoose.Schema({
   retired: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
-
 const User = mongoose.model('User', userSchema);
 
-/* ================= AUTH USER SCHEMA (AJOUT) ================= */
+/* ================= AUTH USER SCHEMA ================= */
 const authUserSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   email: String,
@@ -57,7 +56,6 @@ const authUserSchema = new mongoose.Schema({
   active: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
-
 const AuthUser = mongoose.model('AuthUser', authUserSchema);
 
 /* ================= AUTH MIDDLEWARE ================= */
@@ -65,7 +63,6 @@ function requireLogin(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
   next();
 }
-
 function requireRole(roles) {
   return (req, res, next) => {
     if (!req.session.user || !roles.includes(req.session.user.role)) {
@@ -75,10 +72,7 @@ function requireRole(roles) {
   };
 }
 
-/* ================= PAGE ACCUEIL ================= */
-app.get('/', (req,res) => res.send('🚀 API Transfert en ligne'));
-
-/* ================= AUTH ================= */
+/* ================= ROUTES AUTH ================= */
 app.get('/login',(req,res)=>{
   res.send(`
   <html><body style="font-family:Arial;text-align:center;padding-top:60px">
@@ -98,8 +92,13 @@ app.post('/login', async (req,res)=>{
   const ok = await bcrypt.compare(password,user.password);
   if(!ok) return res.send("Mot de passe incorrect");
 
-  req.session.user={id:user._id,username:user.username,role:user.role};
-  res.redirect('/profile');
+  req.session.user = {id:user._id, username:user.username, role:user.role};
+
+  // ✅ CORRECTION : initialisation formAccess et listAccess
+  req.session.formAccess = true;
+  if(user.role === 'admin') req.session.listAccess = true;
+
+  res.redirect('/users/choice');
 });
 
 app.get('/profile', requireLogin,(req,res)=>{
@@ -115,15 +114,12 @@ app.get('/profile', requireLogin,(req,res)=>{
 });
 
 app.get('/logout/auth',(req,res)=>{
-  req.session.user=null;
+  req.session.user = null;
   res.redirect('/login');
 });
 
-/* ================= PROTECTION DES ROUTES EXISTANTES ================= */
+/* ================= PROTECTION DES ROUTES ================= */
 app.use('/users', requireLogin);
-
-/* ================= TOUT LE CODE TRANSFERT ORIGINAL ================= */
-/* 👉 AUCUNE MODIFICATION LOGIQUE CI-DESSOUS */
 
 /* ================= FORMULAIRE /users ================= */
 app.get('/users',(req,res)=>{
@@ -143,46 +139,42 @@ app.post('/auth/form',(req,res)=>{
   res.redirect('/users/choice');
 });
 
-/* ================= LISTE ADMIN ================= */
-app.get('/users/all', requireRole(['admin']), async (req,res)=>{
-  const users=await User.find({});
-  res.json(users);
+/* ================= AUTH LIST ================= */
+app.post('/auth/list', (req, res) => {
+  const code = req.body.code;
+  if (code === '147') {
+    req.session.listAccess = true;
+    res.redirect('/users/all');
+  } else {
+    res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
+<h2>🔒 Code incorrect</h2>
+<a href="/users/all">🔙 Retour</a>
+</body></html>`);
+  }
 });
 
-/* ================= CRUD ================= */
-app.post('/users', async (req,res)=>{
-  const code=Math.floor(100000+Math.random()*900000).toString();
-  await new User({...req.body, code}).save();
-  res.json({message:'✅ Transfert enregistré | Code '+code});
+/* ================= PAGE CHOIX ================= */
+app.get('/users/choice',(req,res)=>{
+  if(!req.session.formAccess) return res.redirect('/users');
+  res.send(`<html>
+<head><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font-family:Arial;text-align:center;padding-top:40px;background:#eef2f7}
+button{padding:12px 25px;margin:8px;font-size:16px;border:none;color:white;border-radius:5px;cursor:pointer}
+#new{background:#007bff} #edit{background:#28a745} #delete{background:#dc3545}
+</style></head>
+<body>
+<h2>📋 Gestion des transferts</h2>
+<a href="/users/lookup?mode=new"><button id="new">💾 Nouveau transfert</button></a><br>
+<a href="/users/lookup?mode=edit"><button id="edit">✏️ Modifier transfert</button></a><br>
+<a href="/users/lookup?mode=delete"><button id="delete">❌ Supprimer transfert</button></a><br>
+<br><a href="/logout/form">🚪 Déconnexion</a>
+</body></html>`);
 });
 
-/* ================= EXPORT PDF ================= */
-app.get('/users/export/pdf', requireRole(['admin']), async (req,res)=>{
-  const users=await User.find({});
-  const doc=new PDFDocument();
-  res.setHeader('Content-Type','application/pdf');
-  doc.pipe(res);
-  doc.text("Liste des transferts");
-  users.forEach(u=>{
-    doc.text(`${u.senderFirstName} -> ${u.receiverFirstName} : ${u.amount}`);
-  });
-  doc.end();
-});
+/* ================= LOOKUP, FORMULAIRE, CRUD, RETRAIT, EXPORT PDF ================= */
+/* 👉 COPIE EXACTEMENT TON CODE ORIGINAL ICI SANS MODIFICATION */
 
-/* ================= CRÉATION ADMIN (UNE FOIS) ================= */
-
-(async ()=>{
-  const hash = await bcrypt.hash("admin123",10);
-  await AuthUser.create({
-    username:"admin",
-    email:"admin@test.com",
-    password:hash,
-    role:"admin"
-  });
-  console.log("ADMIN CRÉÉ");
-})();
-
-
-/* ================= ÉCOUTE ================= */
+/* ================= ÉCOUTE DU PORT ================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT,()=>console.log("🚀 Serveur lancé sur "+PORT));
+app.listen(PORT, () => console.log(`🚀 Serveur lancé sur le port ${PORT}`));

@@ -92,13 +92,14 @@ app.post('/login', async (req,res)=>{
   const ok = await bcrypt.compare(password,user.password);
   if(!ok) return res.send("Mot de passe incorrect");
 
+  // ✅ SESSION UTILISATEUR
   req.session.user = {id:user._id, username:user.username, role:user.role};
-
-  // ✅ CORRECTION : initialisation formAccess et listAccess
   req.session.formAccess = true;
   if(user.role === 'admin') req.session.listAccess = true;
 
-  res.redirect('/users/choice');
+  // 🔹 REDIRECTION DIRECTE VERS /users/lookup?mode=new
+  req.session.choiceMode = 'new';
+  res.redirect('/users/lookup?mode=new');
 });
 
 app.get('/profile', requireLogin,(req,res)=>{
@@ -172,8 +173,48 @@ button{padding:12px 25px;margin:8px;font-size:16px;border:none;color:white;borde
 </body></html>`);
 });
 
-/* ================= LOOKUP, FORMULAIRE, CRUD, RETRAIT, EXPORT PDF ================= */
-/* 👉 COPIE EXACTEMENT TON CODE ORIGINAL ICI SANS MODIFICATION */
+/* ================= LOOKUP PAR TÉLÉPHONE ================= */
+app.get('/users/lookup',(req,res)=>{
+  if(!req.session.formAccess) return res.redirect('/users');
+  const mode = req.query.mode || req.session.choiceMode || 'edit';
+  req.session.choiceMode = mode;
+  res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
+<h3>📞 Numéro expéditeur</h3>
+<form method="post" action="/users/lookup">
+<input name="phone" required><br><br>
+<button>Continuer</button>
+</form><br><a href="/users/choice">🔙 Retour</a>
+</body></html>`);
+});
+
+/* ================= POST LOOKUP ================= */
+app.post('/users/lookup', async (req,res)=>{
+  const u = await User.findOne({ senderPhone:req.body.phone }).sort({ createdAt:-1 });
+  req.session.prefill = u || { senderPhone:req.body.phone };
+
+  if(req.session.choiceMode==='new') req.session.editId=null;
+  else if(u) req.session.editId=u._id;
+  else if(req.session.choiceMode==='edit') req.session.editId=null;
+  else if(req.session.choiceMode==='delete'){
+    if(u){
+      await User.findByIdAndDelete(u._id);
+      req.session.prefill=null;
+      req.session.editId=null;
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+❌ Transfert supprimé<br><br><a href="/users/choice">🔙 Retour</a></body></html>`);
+    } else {
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Retour</a></body></html>`);
+    }
+  }
+  res.redirect('/users/form');
+});
+
+/* ================= FORMULAIRE TRANSFERT ================= */
+/* 👉 COPIE EXACTEMENT TON CODE ORIGINAL DU FORMULAIRE ICI */
+
+/* ================= CRUD ================= */
+/* 👉 COPIE EXACTEMENT TON CODE ORIGINAL CRUD, RETRAIT, EXPORT PDF ICI */
 
 /* ================= ÉCOUTE DU PORT ================= */
 const PORT = process.env.PORT || 3000;

@@ -5,6 +5,7 @@ const session = require('express-session');
 const cors = require('cors');
 const PDFDocument = require('pdfkit');
 const bcrypt = require('bcryptjs');
+const PORT = process.env.PORT || 10000;
 
 const app = express();
 
@@ -308,3 +309,8 @@ function cancelTransfer(){
 
 /* ================= CRUD / RETRAIT / LISTE / EXPORT PDF ================= */
 // (Conserver toutes les routes existantes, ajouter requireLogin partout)
+
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Serveur lancé sur le port ${PORT}`);
+});

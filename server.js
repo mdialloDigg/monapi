@@ -52,37 +52,29 @@ const authUserSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   email: String,
   password: String,
-  role: { type: String, enum: ['admin', 'agent', 'viewer'], default: 'agent' },
+  role: { type: String, enum: ['admin', 'agent'], default: 'agent' },
   active: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
 const AuthUser = mongoose.model('AuthUser', authUserSchema);
 
 /* ================= AUTH MIDDLEWARE ================= */
-function requireLogin(req, res, next) {
-  if (!req.session.user) return res.redirect('/login');
+function requireLogin(req,res,next){
+  if(!req.session.user) return res.redirect('/login');
   next();
 }
-function requireRole(roles) {
-  return (req, res, next) => {
-    if (!req.session.user || !roles.includes(req.session.user.role)) {
-      return res.status(403).send("⛔ Accès refusé");
-    }
-    next();
-  };
-}
 
-/* ================= ROUTES AUTH ================= */
+/* ================= LOGIN / PROFILE ================= */
 app.get('/login',(req,res)=>{
   res.send(`
-  <html><body style="font-family:Arial;text-align:center;padding-top:60px">
-  <h2>🔐 Connexion</h2>
-  <form method="post" action="/login">
-    <input name="username" placeholder="Utilisateur" required><br><br>
-    <input type="password" name="password" placeholder="Mot de passe" required><br><br>
-    <button>Connexion</button>
-  </form></body></html>
-  `);
+<html><body style="font-family:Arial;text-align:center;padding-top:60px">
+<h2>🔐 Connexion</h2>
+<form method="post" action="/login">
+<input name="username" placeholder="Utilisateur" required><br><br>
+<input type="password" name="password" placeholder="Mot de passe" required><br><br>
+<button>Connexion</button>
+</form></body></html>
+`);
 });
 
 app.post('/login', async (req,res)=>{
@@ -92,30 +84,25 @@ app.post('/login', async (req,res)=>{
   const ok = await bcrypt.compare(password,user.password);
   if(!ok) return res.send("Mot de passe incorrect");
 
-  // ✅ SESSION UTILISATEUR
   req.session.user = {id:user._id, username:user.username, role:user.role};
   req.session.formAccess = true;
   if(user.role === 'admin') req.session.listAccess = true;
-
-  // 🔹 REDIRECTION DIRECTE VERS /users/lookup?mode=new
   req.session.choiceMode = 'new';
   res.redirect('/users/lookup?mode=new');
 });
 
 app.get('/profile', requireLogin,(req,res)=>{
-  res.send(`
-  <html><body style="font-family:Arial;text-align:center;padding-top:60px">
-  <h2>👤 Profil</h2>
-  <p>Utilisateur : ${req.session.user.username}</p>
-  <p>Rôle : ${req.session.user.role}</p>
-  <a href="/users">➡️ Accéder aux transferts</a><br><br>
-  <a href="/logout/auth">🚪 Déconnexion</a>
-  </body></html>
-  `);
+  res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
+<h2>👤 Profil</h2>
+<p>Utilisateur : ${req.session.user.username}</p>
+<p>Rôle : ${req.session.user.role}</p>
+<a href="/users">➡️ Accéder aux transferts</a><br><br>
+<a href="/logout/auth">🚪 Déconnexion</a>
+</body></html>`);
 });
 
 app.get('/logout/auth',(req,res)=>{
-  req.session.user = null;
+  req.session.destroy();
   res.redirect('/login');
 });
 
@@ -173,7 +160,7 @@ button{padding:12px 25px;margin:8px;font-size:16px;border:none;color:white;borde
 </body></html>`);
 });
 
-/* ================= LOOKUP PAR TÉLÉPHONE ================= */
+/* ================= LOOKUP ================= */
 app.get('/users/lookup',(req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
   const mode = req.query.mode || req.session.choiceMode || 'edit';
@@ -187,7 +174,6 @@ app.get('/users/lookup',(req,res)=>{
 </body></html>`);
 });
 
-/* ================= POST LOOKUP ================= */
 app.post('/users/lookup', async (req,res)=>{
   const u = await User.findOne({ senderPhone:req.body.phone }).sort({ createdAt:-1 });
   req.session.prefill = u || { senderPhone:req.body.phone };
@@ -211,11 +197,106 @@ Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Reto
 });
 
 /* ================= FORMULAIRE TRANSFERT ================= */
-/* 👉 COPIE EXACTEMENT TON CODE ORIGINAL DU FORMULAIRE ICI */
+app.get('/users/form', (req,res)=>{
+  if(!req.session.formAccess) return res.redirect('/users');
+  const u=req.session.prefill||{};
+  const isEdit=!!req.session.editId;
+  const locations=['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'];
 
-/* ================= CRUD ================= */
-/* 👉 COPIE EXACTEMENT TON CODE ORIGINAL CRUD, RETRAIT, EXPORT PDF ICI */
+  res.send(`<!DOCTYPE html>
+<html>
+<head><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font-family:Arial;background:#dde5f0;margin:0;padding:0}
+form{background:#fff;max-width:950px;margin:20px auto;padding:15px;border-radius:8px}
+.container{display:flex;flex-wrap:wrap;gap:15px}
+.box{flex:1;min-width:250px;padding:10px;border-radius:6px}
+.origin{background:#e3f0ff}
+.dest{background:#ffe3e3}
+input,select,button{width:100%;padding:9px;margin-top:8px;font-size:14px}
+button{border:none;color:white;font-size:15px;border-radius:5px;cursor:pointer}
+#save{background:#007bff} #cancel{background:#dc3545} #logout{background:#6c757d}
+@media(max-width:600px){.container{flex-direction:column}}
+</style>
+</head>
+<body>
+<form id="form">
+<h3 style="text-align:center">${isEdit?'✏️ Modifier transfert':'💸 Nouveau transfert'}</h3>
+<div class="container">
+<div class="box origin"><h4>📤 Expéditeur</h4>
+<input id="senderFirstName" value="${u.senderFirstName||''}" placeholder="Prénom">
+<input id="senderLastName" value="${u.senderLastName||''}" placeholder="Nom">
+<input id="senderPhone" value="${u.senderPhone||''}" required placeholder="Téléphone">
+<select id="originLocation">${locations.map(v=>`<option ${u.originLocation===v?'selected':''}>${v}</option>`).join('')}</select>
+<input id="amount" type="number" value="${u.amount||''}" placeholder="Montant">
+<input id="fees" type="number" value="${u.fees||''}" placeholder="Frais">
+<input id="feePercent" type="number" value="${u.feePercent||''}" placeholder="% Frais">
+</div>
+<div class="box dest"><h4>📥 Destinataire</h4>
+<input id="receiverFirstName" value="${u.receiverFirstName||''}" placeholder="Prénom">
+<input id="receiverLastName" value="${u.receiverLastName||''}" placeholder="Nom">
+<input id="receiverPhone" value="${u.receiverPhone||''}" placeholder="Téléphone">
+<select id="destinationLocation">${locations.map(v=>`<option ${u.destinationLocation===v?'selected':''}>${v}</option>`).join('')}</select>
+<input id="recoveryAmount" type="number" value="${u.recoveryAmount||''}" placeholder="Montant reçu" readonly>
+<select id="recoveryMode">
+<option ${u.recoveryMode==='Espèces'?'selected':''}>Espèces</option>
+<option ${u.recoveryMode==='Orange Money'?'selected':''}>Orange Money</option>
+<option ${u.recoveryMode==='Wave'?'selected':''}>Wave</option>
+<option ${u.recoveryMode==='Produit'?'selected':''}>Produit</option>
+<option ${u.recoveryMode==='Service'?'selected':''}>Service</option>
+</select>
+</div>
+</div>
+<button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
+${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Supprimer</button>':''}
+<button type="button" id="logout" onclick="location.href='/logout/form'">🚪 Déconnexion</button>
+<p id="message"></p>
+</form>
+<script>
+const amount = document.getElementById('amount');
+const fees = document.getElementById('fees');
+const recoveryAmount = document.getElementById('recoveryAmount');
 
-/* ================= ÉCOUTE DU PORT ================= */
+function updateRecoveryAmount(){
+  recoveryAmount.value = (+amount.value || 0) - (+fees.value || 0);
+}
+amount.addEventListener('input', updateRecoveryAmount);
+fees.addEventListener('input', updateRecoveryAmount);
+
+form.onsubmit=async e=>{
+  e.preventDefault();
+  const url='${isEdit?'/users/update':'/users'}';
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({
+    senderFirstName:senderFirstName.value,
+    senderLastName:senderLastName.value,
+    senderPhone:senderPhone.value,
+    originLocation:originLocation.value,
+    amount:+amount.value,
+    fees:+fees.value,
+    feePercent:+feePercent.value,
+    receiverFirstName:receiverFirstName.value,
+    receiverLastName:receiverLastName.value,
+    receiverPhone:receiverPhone.value,
+    destinationLocation:destinationLocation.value,
+    recoveryAmount:+recoveryAmount.value,
+    recoveryMode:recoveryMode.value
+  })});
+  const d=await r.json();
+  message.innerText=d.message;
+};
+
+function cancelTransfer(){
+  if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
+  fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
+}
+</script>
+</body></html>`);
+});
+
+/* ================= CRUD, RETRAIT, EXPORT PDF ================= */
+/* 👉 Copier tout ton code original CRUD / RETRAIT / EXPORT ici sans modification */
+
+/* ================= ÉCOUTE ================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Serveur lancé sur le port ${PORT}`));
+app.listen(PORT,()=>console.log(`🚀 Serveur lancé sur le port ${PORT}`));

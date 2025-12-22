@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const cors = require('cors');
 const PDFDocument = require('pdfkit');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs'); // bcryptjs pour éviter les erreurs de compilation
 
 const app = express();
 
@@ -45,10 +45,8 @@ const userSchema = new mongoose.Schema({
   retired: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
-
 const User = mongoose.model('User', userSchema);
 
-// Schéma Auth
 const authUserSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   password: String,
@@ -57,12 +55,12 @@ const authUserSchema = new mongoose.Schema({
 const AuthUser = mongoose.model('AuthUser', authUserSchema);
 
 /* ================= MIDDLEWARE AUTH ================= */
-function requireLogin(req,res,next){
+function requireLogin(req, res, next){
   if(req.session.userId) return next();
   res.redirect('/login');
 }
 
-/* ================= ROUTES AUTH ================= */
+/* ================= AUTHENTIFICATION ================= */
 app.get('/login', (req,res) => {
   res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
 <h2>🔑 Connexion</h2>
@@ -132,7 +130,7 @@ app.post('/auth/form',(req,res)=>{
 });
 
 /* ================= AUTH LIST ================= */
-app.post('/auth/list', (req, res) => {
+app.post('/auth/list', requireLogin, (req, res) => {
   const code = req.body.code;
   if (code === '147') {
     req.session.listAccess = true;
@@ -164,16 +162,56 @@ button{padding:12px 25px;margin:8px;font-size:16px;border:none;color:white;borde
 </body></html>`);
 });
 
-/* ================= LOOKUP, FORMULAIRE, CRUD, RETRAIT, EXPORT PDF ================= */
-// Ici tu peux garder ton code existant tel quel, 
-// mais ajouter `requireLogin` sur toutes les routes sensibles, par ex. :
-// app.get('/users/form', requireLogin, ...)
-// app.get('/users/all', requireLogin, ...)
-// app.post('/users', requireLogin, ...)
-// app.post('/users/update', requireLogin, ...)
-// app.post('/users/delete', requireLogin, ...)
-// app.post('/users/retirer', requireLogin, ...)
-// app.get('/users/export/pdf', requireLogin, ...)
+/* ================= LOOKUP PAR TÉLÉPHONE ================= */
+app.get('/users/lookup', requireLogin, (req,res)=>{
+  if(!req.session.formAccess) return res.redirect('/users');
+  const mode = req.query.mode || 'edit';
+  req.session.choiceMode = mode;
+
+  res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
+<h3>📞 Numéro expéditeur</h3>
+<form method="post" action="/users/lookup">
+<input name="phone" required><br><br>
+<button>Continuer</button>
+</form><br><a href="/users/choice">🔙 Retour</a>
+</body></html>`);
+});
+
+app.post('/users/lookup', requireLogin, async (req,res)=>{
+  const u = await User.findOne({ senderPhone:req.body.phone }).sort({ createdAt: -1 });
+  req.session.prefill = u || { senderPhone: req.body.phone };
+
+  if(req.session.choiceMode === 'new') req.session.editId = null;
+  else if(u) req.session.editId = u._id;
+  else if(req.session.choiceMode === 'edit') req.session.editId = null;
+  else if(req.session.choiceMode === 'delete'){
+    if(u){
+      await User.findByIdAndDelete(u._id);
+      req.session.prefill = null;
+      req.session.editId = null;
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+❌ Transfert supprimé<br><br><a href="/users/choice">🔙 Retour</a></body></html>`);
+    } else {
+      return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
+Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Retour</a></body></html>`);
+    }
+  }
+
+  res.redirect('/users/form');
+});
+
+/* ================= FORMULAIRE /users/form ================= */
+// Ton code de formulaire complet ici (avec requireLogin) 
+// ... (copie exactement le formulaire HTML + script du code existant)
+
+// ================= CRUD =================
+// POST /users
+// POST /users/update
+// POST /users/delete
+// POST /users/retirer
+// GET /users/all
+// GET /users/export/pdf
+// Chaque route doit avoir requireLogin pour sécuriser l'accès
 
 /* ================= ÉCOUTE DU PORT ================= */
 const PORT = process.env.PORT || 3000;

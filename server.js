@@ -165,13 +165,7 @@ app.get('/users/lookup',(req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
   const mode = req.query.mode || req.session.choiceMode || 'edit';
   req.session.choiceMode = mode;
-  res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
-<h3>📞 Numéro expéditeur</h3>
-<form method="post" action="/users/lookup">
-<input name="phone" required><br><br>
-<button>Continuer</button>
-</form><br><a href="/users/choice">🔙 Retour</a>
-</body></html>`);
+  res.redirect('/users/form');
 });
 
 app.post('/users/lookup', async (req,res)=>{
@@ -247,12 +241,13 @@ button{border:none;color:white;font-size:15px;border-radius:5px;cursor:pointer}
 </select>
 </div>
 </div>
-<button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
+<button type="submit" id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
 ${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Supprimer</button>':''}
 <button type="button" id="logout" onclick="location.href='/logout/form'">🚪 Déconnexion</button>
 <p id="message"></p>
 </form>
 <script>
+const form = document.getElementById('form');
 const amount = document.getElementById('amount');
 const fees = document.getElementById('fees');
 const recoveryAmount = document.getElementById('recoveryAmount');
@@ -263,11 +258,10 @@ function updateRecoveryAmount(){
 amount.addEventListener('input', updateRecoveryAmount);
 fees.addEventListener('input', updateRecoveryAmount);
 
-form.onsubmit=async e=>{
+form.addEventListener('submit', async e=>{
   e.preventDefault();
-  const url='${isEdit?'/users/update':'/users'}';
-  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({
+  const url = '${isEdit?'/users/update':'/users'}';
+  const payload = {
     senderFirstName:senderFirstName.value,
     senderLastName:senderLastName.value,
     senderPhone:senderPhone.value,
@@ -281,21 +275,26 @@ form.onsubmit=async e=>{
     destinationLocation:destinationLocation.value,
     recoveryAmount:+recoveryAmount.value,
     recoveryMode:recoveryMode.value
-  })});
-  const d=await r.json();
-  message.innerText=d.message;
-};
+  };
+  const r = await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  const d = await r.json();
+  message.innerText = d.message;
+});
 
 function cancelTransfer(){
-  if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
+  if(!confirm('Voulez-vous supprimer ce transfert ?')) return;
   fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
 }
 </script>
 </body></html>`);
 });
 
-/* ================= CRUD, RETRAIT, EXPORT PDF ================= */
-/* 👉 Copier tout ton code original CRUD / RETRAIT / EXPORT ici sans modification */
+/* ================= CRUD / RETRAIT / EXPORT ================= */
+/* Copier ton code original CRUD, retrait et export PDF ici */
 
 /* ================= ÉCOUTE ================= */
 const PORT = process.env.PORT || 3000;

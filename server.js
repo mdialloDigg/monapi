@@ -316,6 +316,19 @@ app.post('/users/delete', requireLogin, async (req,res)=>{
   res.json({message:'❌ Transfert supprimé'});
 });
 
+/* ================= RETRAIT ================= */
+app.post('/users/retirer', requireLogin, async (req,res)=>{
+  const {id,mode} = req.body;
+  if(!["Espèces","Orange Money","Produit","Service"].includes(mode)) return res.status(400).json({message:"Mode invalide"});
+  const user = await User.findById(id);
+  if(!user) return res.status(404).json({message:"Transfert introuvable"});
+  user.recoveryMode = mode;
+  user.retraitHistory.push({date:new Date(), mode});
+  user.retired = true;
+  await user.save();
+  res.json({message:`💰 Retrait effectué via ${mode}`, recoveryAmount: user.amount - user.fees});
+});
+
 /* ================= LISTE DES TRANSFERTS ================= */
 app.get('/users/all', requireLogin, async (req,res)=>{
   if(!req.session.listAccess){
@@ -331,7 +344,7 @@ app.get('/users/all', requireLogin, async (req,res)=>{
   const grouped = {};
   let totalAmount = 0, totalRecovery = 0, totalFees = 0;
 
-  users.forEach(u => {
+  users.forEach(u=>{
     if(!grouped[u.destinationLocation]) grouped[u.destinationLocation] = [];
     grouped[u.destinationLocation].push(u);
     totalAmount += (u.amount||0);
@@ -361,6 +374,53 @@ tr.retired{background-color:orange !important;color:#000;}
 <button class="export" onclick="exportPDF()">📄 Export PDF</button>
 <br><center><button id="logoutBtn">🚪 Déconnexion</button></center>
 <script>
+async function retirer(id,row){
+    const div = document.createElement('div');
+    div.style.position='fixed';
+    div.style.top='0'; div.style.left='0';
+    div.style.width='100%'; div.style.height='100%';
+    div.style.backgroundColor='rgba(0,0,0,0.5)';
+    div.style.display='flex'; div.style.justifyContent='center';
+    div.style.alignItems='center';
+    div.style.zIndex=9999;
+
+    const selectDiv = document.createElement('div');
+    selectDiv.style.backgroundColor='#fff';
+    selectDiv.style.padding='20px';
+    selectDiv.style.borderRadius='8px';
+    selectDiv.innerHTML = \`
+      <h3>Mode de retrait</h3>
+      <select id="modeSelect">
+        <option value="">-- Choisir --</option>
+        <option value="Espèces">Espèces</option>
+        <option value="Orange Money">Orange Money</option>
+        <option value="Produit">Produit</option>
+        <option value="Service">Service</option>
+      </select>
+      <br><br>
+      <button id="confirmRetrait">Valider</button>
+      <button id="cancelRetrait">Annuler</button>
+    \`;
+    div.appendChild(selectDiv);
+    document.body.appendChild(div);
+
+    document.getElementById('cancelRetrait').onclick = ()=>div.remove();
+    document.getElementById('confirmRetrait').onclick = async ()=>{
+      const mode = document.getElementById('modeSelect').value;
+      if(!mode){ alert('Veuillez choisir un mode !'); return; }
+      const res = await fetch("/users/retirer",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({id, mode})
+      });
+      const data = await res.json();
+      alert(data.message);
+      div.remove();
+      row.classList.add('retired');
+      row.querySelector('button.retirer').outerHTML = 'Montant retiré';
+    }
+}
+
 document.getElementById('logoutBtn').onclick = ()=>{ fetch('/logout').then(()=>location.href='/login'); }
 function exportPDF(){window.open("/users/export/pdf","_blank")}
 </script>
@@ -368,13 +428,13 @@ function exportPDF(){window.open("/users/export/pdf","_blank")}
 
   for(let dest in grouped){
     const list = grouped[dest];
-    let subAmount=0, subRecovery=0, subFees=0;
+    let subAmount = 0, subRecovery = 0, subFees = 0;
     html += `<h3>Destination: ${dest}</h3><table>
 <tr>
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
-<th>Montant reçu</th><th>Code</th><th>Date</th>
+<th>Montant reçu</th><th>Code</th><th>Date</th><th>Action</th>
 </tr>`;
     list.forEach(u=>{
       const isRetired = u.retired;
@@ -391,6 +451,7 @@ function exportPDF(){window.open("/users/export/pdf","_blank")}
 <td>${u.recoveryAmount||0}</td>
 <td>${u.code||''}</td>
 <td>${u.createdAt?new Date(u.createdAt).toLocaleString():''}</td>
+<td>${isRetired?'Montant retiré':`<button class="retirer" onclick="retirer('${u._id}',this.parentElement.parentElement)">💰 Retirer</button>`}</td>
 </tr>`;
     });
     html += `<tr class="sub"><td colspan="3">Sous-total ${dest}</td><td>${subAmount}</td><td>${subFees}</td><td colspan="2"></td><td></td><td>${subRecovery}</td><td colspan="2"></td><td></td></tr></table>`;
@@ -401,19 +462,6 @@ function exportPDF(){window.open("/users/export/pdf","_blank")}
 </tr></table></body></html>`;
 
   res.send(html);
-});
-
-/* ================= RETRAIT ================= */
-app.post('/users/retirer', requireLogin, async (req,res)=>{
-  const {id,mode} = req.body;
-  if(!["Espèces","Orange Money","Produit","Service"].includes(mode)) return res.status(400).json({message:"Mode invalide"});
-  const user = await User.findById(id);
-  if(!user) return res.status(404).json({message:"Transfert introuvable"});
-  user.recoveryMode = mode;
-  user.retraitHistory.push({date:new Date(), mode});
-  user.retired = true;
-  await user.save();
-  res.json({message:`💰 Retrait effectué via ${mode}`, recoveryAmount: user.amount - user.fees});
 });
 
 /* ================= EXPORT PDF ================= */

@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const cors = require('cors');
 const PDFDocument = require('pdfkit');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 
@@ -23,7 +24,7 @@ mongoose.connect(
 ).then(() => console.log('✅ MongoDB connecté'))
  .catch(console.error);
 
-/* ================= SCHEMA ================= */
+/* ================= SCHEMAS ================= */
 const userSchema = new mongoose.Schema({
   senderFirstName: String,
   senderLastName: String,
@@ -41,16 +42,77 @@ const userSchema = new mongoose.Schema({
   code: String,
   status: { type: String, default: 'actif' },
   retraitHistory: [{ date: Date, mode: String }],
+  retired: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
-
 const User = mongoose.model('User', userSchema);
 
-/* ================= ROUTES ================= */
-app.get('/', (req,res) => res.send('🚀 API Transfert en ligne'));
+const authUserSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String,
+  createdAt: { type: Date, default: Date.now }
+});
+const AuthUser = mongoose.model('AuthUser', authUserSchema);
+
+/* ================= MIDDLEWARE AUTH ================= */
+function requireLogin(req, res, next){
+  if(req.session.userId) return next();
+  res.redirect('/login');
+}
+
+/* ================= AUTHENTIFICATION ================= */
+app.get('/login', (req,res) => {
+  res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
+<h2>🔑 Connexion</h2>
+<form method="post" action="/login">
+<input type="text" name="username" placeholder="Nom d'utilisateur" required><br><br>
+<input type="password" name="password" placeholder="Mot de passe" required><br><br>
+<button>Connexion</button>
+</form>
+<p>Pas de compte ? <a href="/register">Créer un compte</a></p>
+</body></html>`);
+});
+
+app.post('/login', async (req,res) => {
+  const { username, password } = req.body;
+  const user = await AuthUser.findOne({ username });
+  if(!user) return res.send("Utilisateur inconnu");
+  const match = await bcrypt.compare(password, user.password);
+  if(!match) return res.send("Mot de passe incorrect");
+  req.session.userId = user._id;
+  res.redirect('/users/choice');
+});
+
+app.get('/register', (req,res) => {
+  res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
+<h2>📝 Créer un compte</h2>
+<form method="post" action="/register">
+<input type="text" name="username" placeholder="Nom d'utilisateur" required><br><br>
+<input type="password" name="password" placeholder="Mot de passe" required><br><br>
+<button>Créer</button>
+</form>
+<p>Déjà un compte ? <a href="/login">Se connecter</a></p>
+</body></html>`);
+});
+
+app.post('/register', async (req,res) => {
+  const { username, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
+  try {
+    await new AuthUser({ username, password: hashedPassword }).save();
+    res.send("✅ Compte créé ! <a href='/login'>Se connecter</a>");
+  } catch(err) {
+    res.send("Erreur, nom d'utilisateur déjà pris");
+  }
+});
+
+app.get('/logout', (req,res) => {
+  req.session.destroy();
+  res.redirect('/login');
+});
 
 /* ================= FORMULAIRE /users ================= */
-app.get('/users', (req,res)=>{
+app.get('/users', requireLogin, (req,res)=>{
   if(!req.session.formAccess){
     return res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
 <h2>🔒 Accès formulaire</h2>
@@ -68,7 +130,7 @@ app.post('/auth/form',(req,res)=>{
 });
 
 /* ================= AUTH LIST ================= */
-app.post('/auth/list', (req, res) => {
+app.post('/auth/list', requireLogin, (req, res) => {
   const code = req.body.code;
   if (code === '147') {
     req.session.listAccess = true;
@@ -82,7 +144,7 @@ app.post('/auth/list', (req, res) => {
 });
 
 /* ================= PAGE CHOIX ================= */
-app.get('/users/choice',(req,res)=>{
+app.get('/users/choice', requireLogin, (req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
   res.send(`<html>
 <head><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -96,15 +158,16 @@ button{padding:12px 25px;margin:8px;font-size:16px;border:none;color:white;borde
 <a href="/users/lookup?mode=new"><button id="new">💾 Nouveau transfert</button></a><br>
 <a href="/users/lookup?mode=edit"><button id="edit">✏️ Modifier transfert</button></a><br>
 <a href="/users/lookup?mode=delete"><button id="delete">❌ Supprimer transfert</button></a><br>
-<br><a href="/logout/form">🚪 Déconnexion</a>
+<br><a href="/logout">🚪 Déconnexion</a>
 </body></html>`);
 });
 
-/* ================= LOOKUP PAR TÉLÉPHONE ================= */
-app.get('/users/lookup',(req,res)=>{
+/* ================= LOOKUP ================= */
+app.get('/users/lookup', requireLogin, (req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
-  const mode=req.query.mode||'edit';
-  req.session.choiceMode=mode;
+  const mode = req.query.mode || 'edit';
+  req.session.choiceMode = mode;
+
   res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px;background:#eef2f7">
 <h3>📞 Numéro expéditeur</h3>
 <form method="post" action="/users/lookup">
@@ -114,18 +177,18 @@ app.get('/users/lookup',(req,res)=>{
 </body></html>`);
 });
 
-app.post('/users/lookup', async (req,res)=>{
-  const u = await User.findOne({ senderPhone:req.body.phone }).sort({ createdAt:-1 });
-  req.session.prefill = u || { senderPhone:req.body.phone };
+app.post('/users/lookup', requireLogin, async (req,res)=>{
+  const u = await User.findOne({ senderPhone:req.body.phone }).sort({ createdAt: -1 });
+  req.session.prefill = u || { senderPhone: req.body.phone };
 
-  if(req.session.choiceMode==='new') req.session.editId=null;
-  else if(u) req.session.editId=u._id;
-  else if(req.session.choiceMode==='edit') req.session.editId=null;
-  else if(req.session.choiceMode==='delete'){
+  if(req.session.choiceMode === 'new') req.session.editId = null;
+  else if(u) req.session.editId = u._id;
+  else if(req.session.choiceMode === 'edit') req.session.editId = null;
+  else if(req.session.choiceMode === 'delete'){
     if(u){
       await User.findByIdAndDelete(u._id);
-      req.session.prefill=null;
-      req.session.editId=null;
+      req.session.prefill = null;
+      req.session.editId = null;
       return res.send(`<html><body style="text-align:center;font-family:Arial;padding-top:50px">
 ❌ Transfert supprimé<br><br><a href="/users/choice">🔙 Retour</a></body></html>`);
     } else {
@@ -133,15 +196,16 @@ app.post('/users/lookup', async (req,res)=>{
 Aucun transfert trouvé pour ce numéro<br><br><a href="/users/choice">🔙 Retour</a></body></html>`);
     }
   }
+
   res.redirect('/users/form');
 });
 
-/* ================= FORMULAIRE TRANSFERT ================= */
-app.get('/users/form', (req,res)=>{
+/* ================= FORMULAIRE /users/form ================= */
+app.get('/users/form', requireLogin, (req,res)=>{
   if(!req.session.formAccess) return res.redirect('/users');
-  const u=req.session.prefill||{};
-  const isEdit=!!req.session.editId;
-  const locations=['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'];
+  const u = req.session.prefill || {};
+  const isEdit = !!req.session.editId;
+  const locations = ['France','Labé','Belgique','Conakry','Suisse','Atlanta','New York','Allemagne'];
 
   res.send(`<!DOCTYPE html>
 <html>
@@ -189,41 +253,40 @@ button{border:none;color:white;font-size:15px;border-radius:5px;cursor:pointer}
 </div>
 <button id="save">${isEdit?'💾 Mettre à jour':'💾 Enregistrer'}</button>
 ${isEdit?'<button type="button" id="cancel" onclick="cancelTransfer()">❌ Supprimer</button>':''}
-<button type="button" id="logout" onclick="location.href=\'/logout/form\'">🚪 Déconnexion</button>
+<button type="button" id="logout" onclick="location.href='/logout'">🚪 Déconnexion</button>
 <p id="message"></p>
 </form>
 <script>
-// Calcul automatique du montant reçu
-function calcRecovery(){
-  const amt = parseFloat(document.getElementById('amount').value)||0;
-  const fees = parseFloat(document.getElementById('fees').value)||0;
-  document.getElementById('recoveryAmount').value = amt - fees;
-}
-document.getElementById('amount').addEventListener('input',calcRecovery);
-document.getElementById('fees').addEventListener('input',calcRecovery);
+const amount = document.getElementById('amount');
+const fees = document.getElementById('fees');
+const recoveryAmount = document.getElementById('recoveryAmount');
+function updateRecoveryAmount(){recoveryAmount.value = (+amount.value||0) - (+fees.value||0);}
+amount.addEventListener('input', updateRecoveryAmount);
+fees.addEventListener('input', updateRecoveryAmount);
 
 form.onsubmit=async e=>{
   e.preventDefault();
   const url='${isEdit?'/users/update':'/users'}';
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      senderFirstName:senderFirstName.value,
-      senderLastName:senderLastName.value,
-      senderPhone:senderPhone.value,
-      originLocation:originLocation.value,
-      amount:+amount.value,
-      fees:+fees.value,
-      feePercent:+feePercent.value,
-      receiverFirstName:receiverFirstName.value,
-      receiverLastName:receiverLastName.value,
-      receiverPhone:receiverPhone.value,
-      destinationLocation:destinationLocation.value,
-      recoveryAmount:+recoveryAmount.value,
-      recoveryMode:recoveryMode.value
-    })});
+  body:JSON.stringify({
+    senderFirstName:senderFirstName.value,
+    senderLastName:senderLastName.value,
+    senderPhone:senderPhone.value,
+    originLocation:originLocation.value,
+    amount:+amount.value,
+    fees:+fees.value,
+    feePercent:+feePercent.value,
+    receiverFirstName:receiverFirstName.value,
+    receiverLastName:receiverLastName.value,
+    receiverPhone:receiverPhone.value,
+    destinationLocation:destinationLocation.value,
+    recoveryAmount:+recoveryAmount.value,
+    recoveryMode:recoveryMode.value
+  })});
   const d=await r.json();
   message.innerText=d.message;
 };
+
 function cancelTransfer(){
   if(!confirm('Voulez-vous supprimer ce transfert ?'))return;
   fetch('/users/delete',{method:'POST'}).then(()=>location.href='/users/choice');
@@ -233,41 +296,28 @@ function cancelTransfer(){
 });
 
 /* ================= CRUD ================= */
-app.post('/users', async (req,res)=>{
+app.post('/users', requireLogin, async (req,res)=>{
   const code=Math.floor(100000+Math.random()*900000).toString();
   await new User({...req.body, code,status:'actif'}).save();
   res.json({message:'✅ Transfert enregistré | Code '+code});
 });
 
-app.post('/users/update', async (req,res)=>{
+app.post('/users/update', requireLogin, async (req,res)=>{
   if(!req.session.editId) return res.status(400).json({message:'Aucun transfert sélectionné'});
   await User.findByIdAndUpdate(req.session.editId, req.body);
   req.session.editId=null;
   res.json({message:'✏️ Transfert mis à jour'});
 });
 
-app.post('/users/delete', async (req,res)=>{
+app.post('/users/delete', requireLogin, async (req,res)=>{
   if(!req.session.editId) return res.status(400).json({message:'Aucun transfert sélectionné'});
   await User.findByIdAndDelete(req.session.editId);
   req.session.editId=null;
   res.json({message:'❌ Transfert supprimé'});
 });
 
-app.get('/logout/form',(req,res)=>{
-  req.session.formAccess=false;
-  req.session.prefill=null;
-  req.session.editId=null;
-  req.session.choiceMode=null;
-  res.redirect('/users');
-});
-
-app.get('/logout/list',(req,res)=>{
-    req.session.listAccess=false;
-    res.redirect('/users/all');
-});
-
 /* ================= LISTE DES TRANSFERTS ================= */
-app.get('/users/all', async (req,res)=>{
+app.get('/users/all', requireLogin, async (req,res)=>{
   if(!req.session.listAccess){
     return res.send(`<html><body style="font-family:Arial;text-align:center;padding-top:60px">
 <h2>🔒 Accès liste</h2>
@@ -277,19 +327,19 @@ app.get('/users/all', async (req,res)=>{
 </form></body></html>`);
   }
 
-  const users=await User.find({}).sort({ destinationLocation:1, createdAt:1 });
-  const grouped={};
-  let totalAmount=0,totalRecovery=0,totalFees=0;
+  const users = await User.find({}).sort({ destinationLocation:1, createdAt:1 });
+  const grouped = {};
+  let totalAmount = 0, totalRecovery = 0, totalFees = 0;
 
-  users.forEach(u=>{
-    if(!grouped[u.destinationLocation]) grouped[u.destinationLocation]=[];
+  users.forEach(u => {
+    if(!grouped[u.destinationLocation]) grouped[u.destinationLocation] = [];
     grouped[u.destinationLocation].push(u);
-    totalAmount+=(u.amount||0);
-    totalRecovery+=(u.recoveryAmount||0);
-    totalFees+=(u.fees||0);
+    totalAmount += (u.amount||0);
+    totalRecovery += (u.recoveryAmount||0);
+    totalFees += (u.fees||0);
   });
 
-  let html=`<html><head>
+  let html = `<html><head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 body{font-family:Arial;background:#f4f6f9}
@@ -301,92 +351,35 @@ th{background:#007bff;color:#fff}
 .dest{background:#ffe3e3}
 .sub{background:#ddd;font-weight:bold}
 .total{background:#222;color:#fff;font-weight:bold}
-.retiré{background:orange !important;color:#000}
 h3{margin-top:50px;text-align:center;color:#007bff}
 button.retirer,button.export{padding:5px 10px;border:none;border-radius:4px;cursor:pointer}
 button.retirer{background:#28a745;color:#fff} button.export{background:#007bff;color:#fff;margin:5px}
+tr.retired{background-color:orange !important;color:#000;}
 @media(max-width:600px){table,th,td{font-size:12px;padding:4px}}
 </style></head><body>
 <h2>📋 Liste de tous les transferts groupés par destination</h2>
 <button class="export" onclick="exportPDF()">📄 Export PDF</button>
 <br><center><button id="logoutBtn">🚪 Déconnexion</button></center>
 <script>
-async function retirer(id,row){
-  if(row.classList.contains('retiré')) return;
-
-  const div = document.createElement('div');
-  div.style.position='fixed';
-  div.style.top='0'; div.style.left='0';
-  div.style.width='100%'; div.style.height='100%';
-  div.style.backgroundColor='rgba(0,0,0,0.5)';
-  div.style.display='flex';
-  div.style.justifyContent='center';
-  div.style.alignItems='center';
-  div.style.zIndex=9999;
-
-  const selDiv = document.createElement('div');
-  selDiv.style.background='#fff';
-  selDiv.style.padding='20px';
-  selDiv.style.borderRadius='8px';
-  selDiv.innerHTML = \`
-    <h3>Mode de retrait</h3>
-    <select id="modeSelect">
-      <option value="">-- Choisir --</option>
-      <option value="Espèces">Espèces</option>
-      <option value="Orange Money">Orange Money</option>
-      <option value="Produit">Produit</option>
-      <option value="Service">Service</option>
-    </select>
-    <br><br>
-    <button id="confirmRetrait">Valider</button>
-    <button id="cancelRetrait">Annuler</button>
-  \`;
-  div.appendChild(selDiv);
-  document.body.appendChild(div);
-
-  document.getElementById('cancelRetrait').onclick = () => div.remove();
-  document.getElementById('confirmRetrait').onclick = async () => {
-    const mode = document.getElementById('modeSelect').value;
-    if(!mode){ alert('Veuillez choisir un mode !'); return; }
-
-    const res = await fetch("/users/retirer", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({id, mode})
-    });
-    const data = await res.json();
-    alert(data.message);
-
-    row.classList.add('retiré');
-    row.cells[8].innerText = data.recoveryAmount;
-    row.cells[11].innerText = "Montant retiré";
-
-    div.remove();
-  }
-}
-
-document.getElementById('logoutBtn').onclick = () => {
-    fetch('/logout/list').then(()=>location.href='/users/all');
-}
-
+document.getElementById('logoutBtn').onclick = ()=>{ fetch('/logout').then(()=>location.href='/login'); }
 function exportPDF(){window.open("/users/export/pdf","_blank")}
 </script>
 `;
 
-for(let dest in grouped){
-  const list=grouped[dest];
-  let subAmount=0,subRecovery=0,subFees=0;
-  html+=`<h3>Destination: ${dest}</h3>
-<table>
+  for(let dest in grouped){
+    const list = grouped[dest];
+    let subAmount=0, subRecovery=0, subFees=0;
+    html += `<h3>Destination: ${dest}</h3><table>
 <tr>
 <th>Expéditeur</th><th>Tél</th><th>Origine</th>
 <th>Montant</th><th>Frais</th>
 <th>Destinataire</th><th>Tél Dest.</th><th>Destination</th>
-<th>Montant reçu</th><th>Code</th><th>Date</th><th>Action</th>
+<th>Montant reçu</th><th>Code</th><th>Date</th>
 </tr>`;
-  list.forEach(u=>{
-    subAmount+=(u.amount||0); subRecovery+=(u.recoveryAmount||0); subFees+=(u.fees||0);
-    html+=`<tr>
+    list.forEach(u=>{
+      const isRetired = u.retired;
+      subAmount += (u.amount||0); subRecovery += (u.recoveryAmount||0); subFees += (u.fees||0);
+      html += `<tr class="${isRetired?'retired':''}">
 <td>${u.senderFirstName||''} ${u.senderLastName||''}</td>
 <td>${u.senderPhone||''}</td>
 <td class="origin">${u.originLocation||''}</td>
@@ -398,42 +391,33 @@ for(let dest in grouped){
 <td>${u.recoveryAmount||0}</td>
 <td>${u.code||''}</td>
 <td>${u.createdAt?new Date(u.createdAt).toLocaleString():''}</td>
-<td><button class="retirer" onclick="retirer('${u._id}',this.parentElement.parentElement)">💰 Retirer</button></td>
 </tr>`;
-  });
-  html+=`<tr class="sub">
-<td colspan="3">Sous-total ${dest}</td>
-<td>${subAmount}</td><td>${subFees}</td>
-<td colspan="2"></td><td></td>
-<td>${subRecovery}</td><td colspan="2"></td><td></td>
-</tr></table>`;
-}
+    });
+    html += `<tr class="sub"><td colspan="3">Sous-total ${dest}</td><td>${subAmount}</td><td>${subFees}</td><td colspan="2"></td><td></td><td>${subRecovery}</td><td colspan="2"></td><td></td></tr></table>`;
+  }
 
-html+=`<table><tr class="total">
-<td colspan="3">TOTAL GÉNÉRAL</td>
-<td>${totalAmount}</td><td>${totalFees}</td>
-<td colspan="2"></td><td></td>
-<td>${totalRecovery}</td><td colspan="2"></td><td></td>
-</tr></table>
-</body></html>`;
+  html += `<table><tr class="total">
+<td colspan="3">TOTAL GÉNÉRAL</td><td>${totalAmount}</td><td>${totalFees}</td><td colspan="2"></td><td></td><td>${totalRecovery}</td><td colspan="2"></td><td></td>
+</tr></table></body></html>`;
 
-res.send(html);
+  res.send(html);
 });
 
 /* ================= RETRAIT ================= */
-app.post('/users/retirer', async (req,res)=>{
-  const {id,mode}=req.body;
+app.post('/users/retirer', requireLogin, async (req,res)=>{
+  const {id,mode} = req.body;
   if(!["Espèces","Orange Money","Produit","Service"].includes(mode)) return res.status(400).json({message:"Mode invalide"});
   const user = await User.findById(id);
   if(!user) return res.status(404).json({message:"Transfert introuvable"});
-  user.recoveryMode=mode;
-  user.retraitHistory.push({date:new Date(),mode});
+  user.recoveryMode = mode;
+  user.retraitHistory.push({date:new Date(), mode});
+  user.retired = true;
   await user.save();
   res.json({message:`💰 Retrait effectué via ${mode}`, recoveryAmount: user.amount - user.fees});
 });
 
 /* ================= EXPORT PDF ================= */
-app.get('/users/export/pdf', async (req,res)=>{
+app.get('/users/export/pdf', requireLogin, async (req,res)=>{
   const users = await User.find({}).sort({destinationLocation:1, createdAt:1});
   const doc = new PDFDocument({margin:30, size:'A4'});
   res.setHeader('Content-Type','application/pdf');
@@ -454,8 +438,8 @@ app.get('/users/export/pdf', async (req,res)=>{
   doc.end();
 });
 
-/* ================= ÉCOUTE DU PORT ================= */
+/* ================= SERVEUR RENDER-SAFE ================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur en écoute sur le port ${PORT}`);
 });
